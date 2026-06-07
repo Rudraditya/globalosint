@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "PowerShell(npm install *)",
-      "Skill(run)"
+      "Skill(run)",
+      "PowerShell(Start-Process powershell -ArgumentList '-NoExit', '-Command', '$env:PATH += \";C:\\\\Program Files\\\\GitHub CLI;C:\\\\Program Files\\\\Git\\\\bin\"; gh auth login')",
+      "PowerShell(Invoke-RestMethod \"http://127.0.0.1:3001/api/pm2\" | ConvertTo-Json -Depth 3)"
     ]
   }
 }
