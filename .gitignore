@@ -1,4 +1,6 @@
 node_modules/
 dist/
-screenshot*.png
-screenshot.mjs
+*.png
+screenshot*.mjs
+screenshot_full.mjs
+pm2-api.mjs
