@@ -104,7 +104,7 @@ export const FOREX_PAIRS = [
   { pair: 'USDCNY=X', label: 'USD/CNY', base: 'USD', quote: 'CNY' },
   { pair: 'USDBRL=X', label: 'USD/BRL', base: 'USD', quote: 'BRL' },
   { pair: 'USDKRW=X', label: 'USD/KRW', base: 'USD', quote: 'KRW' },
-  { pair: 'USDAUD=X', label: 'USD/AUD', base: 'USD', quote: 'AUD' },
+  { pair: 'AUDUSD=X', label: 'AUD/USD', base: 'AUD', quote: 'USD' },
   { pair: 'USDCAD=X', label: 'USD/CAD', base: 'USD', quote: 'CAD' },
   { pair: 'USDZAR=X', label: 'USD/ZAR', base: 'USD', quote: 'ZAR' },
 ]
