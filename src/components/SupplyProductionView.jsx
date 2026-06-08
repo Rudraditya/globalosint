@@ -3,30 +3,34 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts'
-import { TrendingUp, TrendingDown, RefreshCw, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { fetchIndustrialProduction, computeAnnualGrowth } from '../utils/api'
 import { SkeletonChart, SkeletonCard } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { WorldMap } from './WorldMap'
+import { LiveStatus } from './LiveStatus'
 
+// G20 countries with OECD KEI industrial production data
 const COUNTRIES = [
-  { code: 'USA', label: 'United States', color: '#818cf8' },
-  { code: 'DEU', label: 'Germany', color: '#22d3ee' },
-  { code: 'JPN', label: 'Japan', color: '#fb923c' },
+  { code: 'USA', label: 'United States',  color: '#818cf8' },
+  { code: 'DEU', label: 'Germany',         color: '#00e5ff' },
+  { code: 'JPN', label: 'Japan',           color: '#fbbf24' },
+  { code: 'GBR', label: 'United Kingdom',  color: '#c084fc' },
+  { code: 'FRA', label: 'France',          color: '#60a5fa' },
+  { code: 'KOR', label: 'South Korea',     color: '#38bdf8' },
 ]
 
-// ── Custom tooltip shared style ────────────────────────────────────────────
 const TOOLTIP_STYLE = {
   contentStyle: {
-    background: '#0f172a',
-    border: '1px solid #1e293b',
+    background: '#0a0a0a',
+    border: '1px solid #27272a',
     borderRadius: 10,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
     padding: '10px 14px',
   },
-  labelStyle: { color: '#cbd5e1', fontWeight: 600, marginBottom: 4, fontSize: 12 },
-  itemStyle: { color: '#94a3b8', fontSize: 12 },
-  cursor: { fill: 'rgba(99,102,241,0.06)' },
+  labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
+  itemStyle: { color: '#71717a', fontSize: 12 },
+  cursor: { fill: 'rgba(249,115,22,0.06)' },
 }
 
 // ── Stat card ──────────────────────────────────────────────────────────────
@@ -35,19 +39,19 @@ function StatCard({ label, value, sub, trend, color, loading }) {
   const isFlat = trend === 0
   const Icon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown
   const trendColor = trend == null
-    ? 'text-slate-500'
-    : isUp ? 'text-emerald-400' : isFlat ? 'text-slate-400' : 'text-red-400'
+    ? 'text-zinc-600'
+    : isUp ? 'text-green-400' : isFlat ? 'text-zinc-500' : 'text-red-400'
 
   if (loading) return <SkeletonCard />
 
   return (
     <div
-      className="bg-slate-900 rounded-xl p-4 border border-slate-800 hover:border-slate-700 transition-colors"
+      className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 hover:border-zinc-800 transition-colors"
       style={{ borderTopColor: color, borderTopWidth: 2 }}
     >
-      <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">{label}</p>
+      <p className="text-zinc-500 text-xs uppercase tracking-wider font-medium mb-2">{label}</p>
       <p className="text-2xl font-bold text-white tabular-nums mb-1.5">
-        {value ?? <span className="text-slate-600">—</span>}
+        {value ?? <span className="text-zinc-700">—</span>}
       </p>
       <div className="flex items-center gap-1.5">
         {trend != null && <Icon size={12} className={trendColor} />}
@@ -105,23 +109,15 @@ function IndexTooltip({ active, payload, label }) {
 }
 
 // ── Section card wrapper ───────────────────────────────────────────────────
-function SectionCard({ title, subtitle, onRefresh, refreshing, children }) {
+function SectionCard({ title, subtitle, lastUpdated, online, children }) {
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800">
-      <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-800">
+    <div className="bg-zinc-950 rounded-xl border border-zinc-900">
+      <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900">
         <div>
           <h2 className="text-white font-semibold text-sm">{title}</h2>
-          {subtitle && <p className="text-slate-500 text-xs mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
         </div>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            aria-label="Refresh data"
-            className="text-slate-500 hover:text-slate-300 transition-colors p-1 -m-1 rounded"
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          </button>
-        )}
+        <LiveStatus online={online} lastUpdated={lastUpdated} />
       </div>
       <div className="px-5 py-5">{children}</div>
     </div>
@@ -132,6 +128,7 @@ export function SupplyProductionView() {
   const [data, setData] = useState({})
   const [loading, setLoading] = useState({})
   const [errors, setErrors] = useState({})
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   const load = useCallback(async (code) => {
     setLoading((p) => ({ ...p, [code]: true }))
@@ -140,6 +137,7 @@ export function SupplyProductionView() {
       const raw = await fetchIndustrialProduction(code)
       const growth = computeAnnualGrowth(raw)
       setData((p) => ({ ...p, [code]: { raw, growth } }))
+      setLastUpdated(new Date())
     } catch (e) {
       setErrors((p) => ({ ...p, [code]: e.message }))
     } finally {
@@ -176,11 +174,12 @@ export function SupplyProductionView() {
   const anyLoading = COUNTRIES.some(({ code }) => loading[code])
   const allErrored = COUNTRIES.every(({ code }) => errors[code])
   const reloadAll = () => COUNTRIES.forEach(({ code }) => load(code))
+  const isOnline = !anyLoading && Object.keys(data).length > 0
 
   return (
     <div className="space-y-5">
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {COUNTRIES.map(({ code, label, color }) => {
           const growth = data[code]?.growth ?? []
           const latest = growth[growth.length - 1]
@@ -209,9 +208,9 @@ export function SupplyProductionView() {
       {/* Annual growth bar chart */}
       <SectionCard
         title="Industrial Production — Annual Growth"
-        subtitle="YoY % change from monthly index averages · OECD KEI"
-        onRefresh={reloadAll}
-        refreshing={anyLoading}
+        subtitle="YoY % change from monthly index averages · OECD KEI · G20 economies"
+        online={isOnline}
+        lastUpdated={lastUpdated}
       >
         {anyLoading && growthRows.length === 0 ? (
           <SkeletonChart />
@@ -228,15 +227,15 @@ export function SupplyProductionView() {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
               <XAxis
                 dataKey="year"
-                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                tick={{ fill: '#52525b', fontSize: 11, fontWeight: 500 }}
                 axisLine={{ stroke: '#1e293b' }}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#52525b', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}%`}
@@ -245,7 +244,7 @@ export function SupplyProductionView() {
               <Legend
                 formatter={(v) => {
                   const c = COUNTRIES.find((c) => c.code === v)
-                  return <span style={{ color: '#94a3b8', fontSize: 12 }}>{c?.label ?? v}</span>
+                  return <span style={{ color: '#71717a', fontSize: 11 }}>{c?.label ?? v}</span>
                 }}
                 wrapperStyle={{ paddingTop: 12 }}
               />
@@ -262,6 +261,8 @@ export function SupplyProductionView() {
       <SectionCard
         title="Industrial Production Index — Last 24 Months"
         subtitle="Base period = 100 · Monthly observations · OECD KEI"
+        online={isOnline}
+        lastUpdated={lastUpdated}
       >
         {anyLoading && indexRows.length === 0 ? (
           <SkeletonChart />
@@ -277,10 +278,10 @@ export function SupplyProductionView() {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
               <XAxis
                 dataKey="period"
-                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
+                tick={{ fill: '#52525b', fontSize: 10, fontWeight: 500 }}
                 axisLine={{ stroke: '#1e293b' }}
                 tickLine={false}
                 tickFormatter={(v) => {
@@ -290,7 +291,7 @@ export function SupplyProductionView() {
                 interval={3}
               />
               <YAxis
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#52525b', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 domain={['auto', 'auto']}
@@ -300,7 +301,7 @@ export function SupplyProductionView() {
               <Legend
                 formatter={(v) => {
                   const c = COUNTRIES.find((c) => c.code === v)
-                  return <span style={{ color: '#94a3b8', fontSize: 12 }}>{c?.label ?? v}</span>
+                  return <span style={{ color: '#71717a', fontSize: 11 }}>{c?.label ?? v}</span>
                 }}
                 wrapperStyle={{ paddingTop: 12 }}
               />

@@ -1,133 +1,111 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
-import { RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { fetchIndustryGDP, fetchMarketData } from '../utils/api'
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
+import { ALL_COUNTRIES, fetchGDPForCountry, fetchForexRates, fetchMarketData, getEURUSD } from '../utils/api'
 import { SkeletonChart, SkeletonCard } from './Skeleton'
 import { ErrorState } from './ErrorState'
+import { LiveStatus } from './LiveStatus'
 
-const COUNTRIES = [
-  { code: 'USA', label: 'United States', color: '#818cf8' },
-  { code: 'DEU', label: 'Germany', color: '#22d3ee' },
-  { code: 'JPN', label: 'Japan', color: '#fb923c' },
-]
+const DEFAULT_SELECTION = ['IND', 'USA', 'CHN', 'DEU', 'GBR', 'JPN']
 
-// ── Shared tooltip style ───────────────────────────────────────────────────
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    background: '#0f172a',
-    border: '1px solid #1e293b',
-    borderRadius: 10,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-    padding: '10px 14px',
-  },
-  labelStyle: { color: '#cbd5e1', fontWeight: 600, marginBottom: 4, fontSize: 12 },
-  itemStyle: { color: '#94a3b8', fontSize: 12 },
-  cursor: { stroke: 'rgba(99,102,241,0.15)', strokeWidth: 1, fill: 'rgba(99,102,241,0.04)' },
+const TT = {
+  contentStyle: { background: '#0a0a0a', border: '1px solid #27272a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
+  labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
+  itemStyle: { color: '#71717a', fontSize: 12 },
+  cursor: { stroke: 'rgba(249,115,22,0.15)', strokeWidth: 1, fill: 'rgba(249,115,22,0.04)' },
 }
 
-// ── Section card wrapper ───────────────────────────────────────────────────
-function SectionCard({ title, subtitle, onRefresh, refreshing, children }) {
+function Card({ children, className = '' }) {
+  return <div className={`bg-zinc-950 rounded-xl border border-zinc-900 ${className}`}>{children}</div>
+}
+
+function CardHeader({ title, subtitle, right }) {
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800">
-      <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-800">
-        <div>
-          <h2 className="text-white font-semibold text-sm">{title}</h2>
-          {subtitle && <p className="text-slate-500 text-xs mt-0.5">{subtitle}</p>}
-        </div>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            aria-label="Refresh data"
-            className="text-slate-500 hover:text-slate-300 transition-colors p-1 -m-1 rounded"
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-          </button>
-        )}
+    <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900">
+      <div>
+        <h2 className="text-white font-semibold text-sm">{title}</h2>
+        {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
       </div>
-      <div className="px-5 py-5">{children}</div>
+      {right}
     </div>
   )
 }
 
-// ── Ticker card ────────────────────────────────────────────────────────────
-function TickerCard({ ticker }) {
-  const up = ticker.change1M > 0
-  const flat = ticker.change1M === 0
-  const Icon = flat ? Minus : up ? TrendingUp : TrendingDown
-  const trendColor = flat ? 'text-slate-400' : up ? 'text-emerald-400' : 'text-red-400'
-  const lineColor = up ? '#10b981' : '#ef4444'
+// ── Country selector ───────────────────────────────────────────────────────
 
-  if (ticker.error) {
-    return (
-      <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 border-dashed flex flex-col gap-1">
-        <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">{ticker.label}</p>
-        <p className="text-slate-700 text-sm font-medium">{ticker.symbol}</p>
-        <p className="text-slate-600 text-xs mt-auto">Unavailable</p>
-      </div>
-    )
+function CountrySelector({ selected, onChange }) {
+  const [open, setOpen] = useState(false)
+
+  const toggle = (code) => {
+    if (selected.includes(code)) {
+      if (selected.length > 1) onChange(selected.filter((c) => c !== code))
+    } else {
+      onChange([...selected, code])
+    }
   }
 
+  const regions = [...new Set(ALL_COUNTRIES.map((c) => c.region))]
+
   return (
-    <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 hover:border-slate-700 transition-colors">
-      <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-1">{ticker.label}</p>
-      <p className="text-xl font-bold text-white tabular-nums">
-        {ticker.latest != null ? `$${ticker.latest.toLocaleString()}` : '—'}
-      </p>
-      <div className="flex items-center gap-1 mt-1">
-        <Icon size={12} className={trendColor} />
-        <span className={`text-xs font-semibold ${trendColor}`}>
-          {ticker.change1M != null
-            ? `${ticker.change1M > 0 ? '+' : ''}${ticker.change1M}%`
-            : '—'}
-        </span>
-        <span className="text-slate-600 text-xs ml-0.5">1M</span>
-      </div>
-      {ticker.series?.length > 0 && (
-        <div className="mt-3 -mx-1">
-          <ResponsiveContainer width="100%" height={44}>
-            <AreaChart data={ticker.series} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id={`spark-${ticker.symbol}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={lineColor} stopOpacity={0.25} />
-                  <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Area
-                type="monotone"
-                dataKey="close"
-                stroke={lineColor}
-                fill={`url(#spark-${ticker.symbol})`}
-                strokeWidth={1.5}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+    <div className="relative">
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:border-zinc-700 transition-colors"
+      >
+        <span>{selected.length} countries</span>
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-9 z-30 w-72 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/80 p-3 max-h-80 overflow-y-auto">
+          {regions.map((region) => (
+            <div key={region} className="mb-3">
+              <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-semibold mb-1.5 px-1">{region}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_COUNTRIES.filter((c) => c.region === region).map((c) => {
+                  const active = selected.includes(c.code)
+                  return (
+                    <button
+                      key={c.code}
+                      onClick={() => toggle(c.code)}
+                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                        active ? 'text-white' : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                      style={active ? { background: `${c.color}22`, border: `1px solid ${c.color}60`, color: c.color } : {}}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-// ── GDP area chart custom tooltip ──────────────────────────────────────────
-function GDPTooltip({ active, payload, label }) {
+// ── GDP tooltip ────────────────────────────────────────────────────────────
+
+function GDPTooltip({ active, payload, label, selectedDefs }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={TOOLTIP_STYLE.contentStyle}>
-      <p style={TOOLTIP_STYLE.labelStyle}>{label}</p>
+    <div style={TT.contentStyle}>
+      <p style={TT.labelStyle}>{label}</p>
       {payload.map((entry) => {
-        const country = COUNTRIES.find((c) => c.code === entry.dataKey)
+        const c = selectedDefs.find((x) => x.code === entry.dataKey)
         if (entry.value == null) return null
         return (
           <div key={entry.dataKey} className="flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: entry.stroke }} />
-            <span className="text-slate-400 text-xs">{country?.label ?? entry.dataKey}</span>
-            <span className="ml-auto text-slate-200 text-xs font-semibold tabular-nums pl-4">
-              {Number(entry.value).toFixed(2)}%
+            <span className="text-zinc-400 text-xs">{c?.label ?? entry.dataKey}</span>
+            <span className="ml-auto text-white text-xs font-bold tabular-nums pl-4">
+              ${Number(entry.value).toLocaleString()} B
             </span>
           </div>
         )
@@ -136,67 +114,165 @@ function GDPTooltip({ active, payload, label }) {
   )
 }
 
-// ── Bar chart custom tooltip ───────────────────────────────────────────────
-function BarTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  const entry = payload[0]
-  const country = COUNTRIES.find((c) => c.label === label)
+// ── FOREX card ─────────────────────────────────────────────────────────────
+
+function ForexCard({ fx }) {
+  const up = fx.change > 0, flat = fx.change === 0 || fx.change == null
   return (
-    <div style={TOOLTIP_STYLE.contentStyle}>
-      <p style={TOOLTIP_STYLE.labelStyle}>{label}</p>
-      <div className="flex items-center gap-2 mt-1">
-        <span className="w-2 h-2 rounded-full" style={{ background: country?.color ?? entry.fill }} />
-        <span className="text-slate-400 text-xs">Industry % of GDP</span>
-        <span className="ml-auto text-slate-200 text-xs font-semibold tabular-nums pl-4">
-          {Number(entry.value).toFixed(2)}%
-        </span>
-      </div>
+    <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 hover:border-zinc-700 transition-colors">
+      <p className="text-zinc-500 text-xs font-semibold tracking-wider mb-1">{fx.label}</p>
+      <p className="text-xl font-bold text-white tabular-nums">
+        {fx.rate != null ? fx.rate.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '—'}
+      </p>
+      {fx.change != null && (
+        <div className="flex items-center gap-1 mt-1">
+          {flat ? <Minus size={11} className="text-zinc-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
+          <span className={`text-xs font-semibold ${flat ? 'text-zinc-500' : up ? 'text-green-400' : 'text-red-400'}`}>
+            {fx.change > 0 ? '+' : ''}{fx.change}%
+          </span>
+          <span className="text-zinc-700 text-xs ml-0.5">1d</span>
+        </div>
+      )}
+      {fx.error && <p className="text-zinc-700 text-xs mt-1">Unavailable</p>}
     </div>
   )
 }
 
+// ── Ticker card ────────────────────────────────────────────────────────────
+
+function TickerCard({ ticker }) {
+  const up = ticker.change1M > 0, flat = ticker.change1M === 0
+  const trendColor = flat ? 'text-zinc-400' : up ? 'text-green-400' : 'text-red-400'
+  const lineColor = up ? '#22c55e' : '#ef4444'
+  if (ticker.error) {
+    return (
+      <div className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 border-dashed">
+        <p className="text-zinc-600 text-xs uppercase tracking-wider font-medium">{ticker.label}</p>
+        <p className="text-zinc-700 text-xs mt-1">Unavailable</p>
+      </div>
+    )
+  }
+  return (
+    <div className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 hover:border-zinc-800 transition-colors">
+      <p className="text-zinc-500 text-xs uppercase tracking-wider font-medium mb-1">{ticker.label}</p>
+      <p className="text-xl font-bold text-white tabular-nums">
+        {ticker.latest != null ? `$${ticker.latest.toLocaleString()}` : '—'}
+      </p>
+      <div className="flex items-center gap-1 mt-1">
+        {flat ? <Minus size={11} className="text-zinc-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
+        <span className={`text-xs font-semibold ${trendColor}`}>
+          {ticker.change1M != null ? `${ticker.change1M > 0 ? '+' : ''}${ticker.change1M}%` : '—'}
+        </span>
+        <span className="text-zinc-700 text-xs ml-0.5">1M</span>
+      </div>
+      {ticker.series?.length > 0 && (
+        <div className="mt-3 -mx-1">
+          <ResponsiveContainer width="100%" height={40}>
+            <AreaChart data={ticker.series} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id={`spark-${ticker.symbol}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={lineColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey="close" stroke={lineColor} fill={`url(#spark-${ticker.symbol})`} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main view ──────────────────────────────────────────────────────────────
+
 export function MacroIndicatorsView() {
+  const [selected, setSelected] = useState(DEFAULT_SELECTION)
   const [gdpData, setGdpData] = useState({})
+  const [gdpSources, setGdpSources] = useState({})
   const [gdpLoading, setGdpLoading] = useState({})
-  const [gdpErrors, setGdpErrors] = useState({})
+  const [forexRates, setForexRates] = useState([])
+  const [forexLoading, setForexLoading] = useState(false)
+  const [forexUpdated, setForexUpdated] = useState(null)
   const [market, setMarket] = useState([])
   const [marketLoading, setMarketLoading] = useState(false)
-  const [marketError, setMarketError] = useState(null)
+  const [marketUpdated, setMarketUpdated] = useState(null)
+  const eurToUsdRef = useRef(1.08)
 
   const loadGDP = useCallback(async (code) => {
+    const def = ALL_COUNTRIES.find((c) => c.code === code)
+    if (!def) return
     setGdpLoading((p) => ({ ...p, [code]: true }))
-    setGdpErrors((p) => ({ ...p, [code]: null }))
     try {
-      const rows = await fetchIndustryGDP(code)
-      setGdpData((p) => ({ ...p, [code]: rows }))
-    } catch (e) {
-      setGdpErrors((p) => ({ ...p, [code]: e.message }))
+      const result = await fetchGDPForCountry(def, eurToUsdRef.current)
+      setGdpData((p) => ({ ...p, [code]: result.data }))
+      setGdpSources((p) => ({ ...p, [code]: result.source }))
+    } catch {
+      setGdpData((p) => ({ ...p, [code]: [] }))
     } finally {
       setGdpLoading((p) => ({ ...p, [code]: false }))
     }
   }, [])
 
+  const loadForex = useCallback(async () => {
+    setForexLoading(true)
+    try {
+      const rates = await fetchForexRates()
+      setForexRates(rates)
+      setForexUpdated(new Date())
+      const eur = rates.find((r) => r.pair === 'EURUSD=X')?.rate
+      if (eur) eurToUsdRef.current = eur
+    } catch { /* silent */ }
+    finally { setForexLoading(false) }
+  }, [])
+
   const loadMarket = useCallback(async () => {
     setMarketLoading(true)
-    setMarketError(null)
     try {
       const tickers = await fetchMarketData()
       setMarket(tickers)
-    } catch (e) {
-      setMarketError(e.message)
-    } finally {
-      setMarketLoading(false)
-    }
+      setMarketUpdated(new Date())
+    } catch { /* silent */ }
+    finally { setMarketLoading(false) }
   }, [])
 
-  useEffect(() => {
-    COUNTRIES.forEach(({ code }) => loadGDP(code))
-    loadMarket()
-  }, [loadGDP, loadMarket])
+  // Track which codes have been fetched (or are in-flight) so we never double-load.
+  const fetchedRef = useRef(new Set())
 
-  // Merge GDP data keyed by year
+  const loadGDPOnce = useCallback((code) => {
+    if (fetchedRef.current.has(code)) return
+    fetchedRef.current.add(code)
+    loadGDP(code)
+  }, [loadGDP])
+
+  // Initial load: fetch forex first so eurToUsdRef is populated before any GDP call.
+  useEffect(() => {
+    loadForex().then(() => {
+      // After forex resolves, load GDP for every currently-selected country.
+      selected.forEach(loadGDPOnce)
+    })
+    loadMarket()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the selection changes (user adds/removes countries), load any
+  // newly-added countries.  A country is "new" when its data hasn't been
+  // fetched yet — we rely on fetchedRef rather than testing gdpData so we
+  // correctly handle the case where data is an empty array (falsy guard on
+  // `!gdpData[code]` would miss a previously-failed/empty fetch).
+  useEffect(() => {
+    selected.forEach((code) => {
+      if (!fetchedRef.current.has(code)) {
+        fetchedRef.current.add(code)
+        loadGDP(code)
+      }
+    })
+  }, [selected, loadGDP])
+
+  const selectedDefs = selected.map((code) => ALL_COUNTRIES.find((c) => c.code === code)).filter(Boolean)
+
+  // Merge GDP by year
   const gdpByYear = {}
-  for (const { code } of COUNTRIES) {
+  for (const code of selected) {
     for (const row of gdpData[code] ?? []) {
       if (!gdpByYear[row.year]) gdpByYear[row.year] = { year: row.year }
       gdpByYear[row.year][code] = row.value
@@ -204,58 +280,145 @@ export function MacroIndicatorsView() {
   }
   const gdpRows = Object.values(gdpByYear).sort((a, b) => a.year.localeCompare(b.year))
 
-  // Latest bar data — one row per country so each gets its own color
-  const latestBarData = COUNTRIES.map(({ code, label, color }) => {
-    const series = gdpData[code] ?? []
-    const latest = series[series.length - 1]
-    return { label, code, color, value: latest?.value ?? 0, year: latest?.year ?? '' }
+  const latestBarData = selectedDefs.map((c) => {
+    const series = gdpData[c.code] ?? []
+    const latest = series.at(-1)
+    return { label: c.label, code: c.code, color: c.color, value: latest?.value ?? 0, year: latest?.year ?? '' }
   })
 
-  // Stable radar data derived from actual GDP values (no Math.random)
-  // Each subject represents a facet with a fixed weight multiplier per country
-  const SECTOR_WEIGHTS = {
-    Manufacturing:  { USA: 0.55, DEU: 0.85, CHN: 1.10 },
-    Energy:         { USA: 0.70, DEU: 0.60, CHN: 0.90 },
-    Construction:   { USA: 0.45, DEU: 0.55, CHN: 0.75 },
-    'Mining & Resources': { USA: 0.65, DEU: 0.35, CHN: 0.85 },
-    Utilities:      { USA: 0.40, DEU: 0.50, CHN: 0.60 },
-  }
-
-  // useMemo so radar data only recomputes when gdpData changes, not on every render
-  const radarData = useMemo(() =>
-    Object.entries(SECTOR_WEIGHTS).map(([subject, weights]) => {
-      const row = { subject }
-      for (const { code } of COUNTRIES) {
-        const series = gdpData[code] ?? []
-        const latest = series[series.length - 1]?.value ?? 0
-        row[code] = parseFloat((latest * (weights[code] ?? 1)).toFixed(1))
-      }
-      return row
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gdpData]
-  )
-
-  const anyGdpLoading = COUNTRIES.some(({ code }) => gdpLoading[code])
-  const allGdpErrored = COUNTRIES.every(({ code }) => gdpErrors[code])
-  const reloadGDP = () => COUNTRIES.forEach(({ code }) => loadGDP(code))
+  const anyGdpLoading = selected.some((c) => gdpLoading[c])
+  const sourceList = [...new Set(Object.values(gdpSources))].join(', ')
 
   return (
     <div className="space-y-5">
-      {/* Market ticker cards */}
+      {/* Country selector bar */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-white font-semibold text-sm">GDP Comparison</h2>
+          <p className="text-zinc-600 text-xs mt-0.5">
+            All values in USD billions · {sourceList || 'Eurostat / World Bank'}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <LiveStatus online={!anyGdpLoading && gdpRows.length > 0} lastUpdated={gdpRows.length > 0 ? new Date() : null} />
+          <CountrySelector selected={selected} onChange={setSelected} />
+        </div>
+      </div>
+
+      {/* Country color legend */}
+      <div className="flex flex-wrap gap-2">
+        {selectedDefs.map((c) => (
+          <span key={c.code} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: `${c.color}18`, border: `1px solid ${c.color}40`, color: c.color }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+            {c.label}
+            {gdpSources[c.code] && <span className="opacity-50 text-[10px]">{gdpSources[c.code] === 'Eurostat' ? ' · EU' : ''}</span>}
+          </span>
+        ))}
+      </div>
+
+      {/* GDP time series area chart */}
+      <Card>
+        <CardHeader title="GDP Trend (USD Billions)" subtitle="10-year time series · Eurostat for EU members · World Bank for others" />
+        <div className="px-5 py-5">
+          {anyGdpLoading && gdpRows.length === 0 ? (
+            <SkeletonChart />
+          ) : gdpRows.length === 0 ? (
+            <ErrorState message="No GDP data loaded" onRetry={() => selected.forEach(loadGDP)} />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={gdpRows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <defs>
+                  {selectedDefs.map(({ code, color }) => (
+                    <linearGradient key={code} id={`mgdp-${code}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={color} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={color} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
+                <XAxis dataKey="year" tick={{ fill: '#52525b', fontSize: 11 }} axisLine={{ stroke: '#18181b' }} tickLine={false} />
+                <YAxis tick={{ fill: '#52525b', fontSize: 11 }} axisLine={false} tickLine={false}
+                  tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}T` : `$${v}B`} />
+                <Tooltip content={(props) => <GDPTooltip {...props} selectedDefs={selectedDefs} />} cursor={TT.cursor} />
+                <Legend formatter={(v) => { const c = selectedDefs.find((x) => x.code === v); return <span style={{ color: c?.color ?? '#71717a', fontSize: 11 }}>{c?.label ?? v}</span> }} wrapperStyle={{ paddingTop: 12 }} />
+                {selectedDefs.map(({ code, color }) => (
+                  <Area key={code} type="monotone" dataKey={code} stroke={color} fill={`url(#mgdp-${code})`}
+                    strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: color }} connectNulls />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
+
+      {/* Latest GDP bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card>
+          <CardHeader title="Latest GDP — Country Comparison" subtitle={latestBarData[0]?.year ? `USD billions · ${latestBarData[0].year}` : 'USD billions'} />
+          <div className="px-5 py-5">
+            {anyGdpLoading && gdpRows.length === 0 ? (
+              <SkeletonChart />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={latestBarData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
+                  <defs>
+                    {selectedDefs.map(({ code, color }) => (
+                      <linearGradient key={code} id={`mbar-${code}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={1} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.5} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#52525b', fontSize: 10 }} axisLine={{ stroke: '#18181b' }} tickLine={false}
+                    tickFormatter={(v) => v.length > 8 ? v.split(' ')[0] : v} />
+                  <YAxis tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}T` : `$${v}B`} />
+                  <Tooltip
+                    contentStyle={TT.contentStyle} labelStyle={TT.labelStyle}
+                    formatter={(v, name, props) => [`$${Number(v).toLocaleString()} B`, props.payload?.label ?? name]}
+                    cursor={{ fill: 'rgba(249,115,22,0.06)' }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={52}>
+                    {latestBarData.map(({ code, color }) => (
+                      <Cell key={code} fill={`url(#mbar-${code})`} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        {/* FOREX panel */}
+        <Card>
+          <CardHeader
+            title="Currency Exchange Rates"
+            subtitle="vs USD · Yahoo Finance · 24h refresh"
+            right={<LiveStatus online={forexRates.length > 0} lastUpdated={forexUpdated} />}
+          />
+          <div className="px-5 py-5">
+            {forexLoading && forexRates.length === 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 max-h-60 overflow-y-auto">
+                {forexRates.map((fx) => <ForexCard key={fx.pair} fx={fx} />)}
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Financial market snapshot */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-white font-semibold text-sm">Financial Market Snapshot</h2>
-            <p className="text-slate-500 text-xs mt-0.5">1-month performance · via Yahoo Finance</p>
+            <p className="text-zinc-600 text-xs mt-0.5">1-month performance · Yahoo Finance</p>
           </div>
-          <button
-            onClick={loadMarket}
-            aria-label="Refresh market data"
-            className="text-slate-500 hover:text-slate-300 transition-colors p-1 -m-1 rounded"
-          >
-            <RefreshCw size={14} className={marketLoading ? 'animate-spin' : ''} />
-          </button>
+          <LiveStatus online={market.length > 0} lastUpdated={marketUpdated} />
         </div>
 
         {marketLoading && market.length === 0 ? (
@@ -267,166 +430,6 @@ export function MacroIndicatorsView() {
             {market.map((t) => <TickerCard key={t.symbol} ticker={t} />)}
           </div>
         )}
-
-        {marketError && market.length === 0 && (
-          <ErrorState message={`Market data unavailable: ${marketError}`} onRetry={loadMarket} />
-        )}
-      </div>
-
-      {/* Industry value added area chart */}
-      <SectionCard
-        title="Industry Value Added (% of GDP)"
-        subtitle="Source: World Bank — NV.IND.TOTL.ZS"
-        onRefresh={reloadGDP}
-        refreshing={anyGdpLoading}
-      >
-        {anyGdpLoading && gdpRows.length === 0 ? (
-          <SkeletonChart />
-        ) : allGdpErrored ? (
-          <ErrorState message="World Bank data unavailable" onRetry={reloadGDP} />
-        ) : (
-          <ResponsiveContainer width="100%" height={288}>
-            <AreaChart data={gdpRows} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
-              <defs>
-                {COUNTRIES.map(({ code, color }) => (
-                  <linearGradient key={code} id={`grad-${code}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={color} stopOpacity={0.2} />
-                    <stop offset="95%" stopColor={color} stopOpacity={0} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis
-                dataKey="year"
-                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                axisLine={{ stroke: '#1e293b' }}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: '#64748b', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                unit="%"
-                domain={['auto', 'auto']}
-                tickFormatter={(v) => v.toFixed(0)}
-              />
-              <Tooltip content={<GDPTooltip />} cursor={TOOLTIP_STYLE.cursor} />
-              <Legend
-                formatter={(v) => {
-                  const c = COUNTRIES.find((c) => c.code === v)
-                  return <span style={{ color: '#94a3b8', fontSize: 12 }}>{c?.label ?? v}</span>
-                }}
-                wrapperStyle={{ paddingTop: 12 }}
-              />
-              {COUNTRIES.map(({ code, color }) => (
-                <Area
-                  key={code}
-                  type="monotone"
-                  dataKey={code}
-                  stroke={color}
-                  fill={`url(#grad-${code})`}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0, fill: color }}
-                  connectNulls
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </SectionCard>
-
-      {/* Side-by-side: bar comparison + radar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Latest year bar — fixed: one Bar element, Cell per entry for per-country colors */}
-        <SectionCard
-          title="Latest Year — Country Comparison"
-          subtitle={latestBarData[0]?.year ? `Industry value added · ${latestBarData[0].year}` : 'Industry value added'}
-        >
-          {anyGdpLoading && gdpRows.length === 0 ? (
-            <SkeletonChart />
-          ) : (
-            <ResponsiveContainer width="100%" height={228}>
-              <BarChart
-                data={latestBarData}
-                margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
-                barCategoryGap="35%"
-              >
-                <defs>
-                  {COUNTRIES.map(({ code, color }) => (
-                    <linearGradient key={code} id={`bar-latest-${code}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity={1} />
-                      <stop offset="100%" stopColor={color} stopOpacity={0.6} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                  axisLine={{ stroke: '#1e293b' }}
-                  tickLine={false}
-                  tickFormatter={(v) => v.split(' ')[0]} // "United" → abbreviate long labels
-                />
-                <YAxis
-                  tick={{ fill: '#64748b', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  unit="%"
-                  tickFormatter={(v) => v.toFixed(0)}
-                />
-                <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={56}>
-                  {latestBarData.map(({ code, color }) => (
-                    <Cell key={code} fill={`url(#bar-latest-${code})`} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </SectionCard>
-
-        {/* Radar */}
-        <SectionCard
-          title="Industrial Composition Radar"
-          subtitle="Relative sector weighting derived from GDP share"
-        >
-          <ResponsiveContainer width="100%" height={228}>
-            <RadarChart data={radarData} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
-              <PolarGrid stroke="#1e293b" />
-              <PolarAngleAxis
-                dataKey="subject"
-                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
-              />
-              <PolarRadiusAxis
-                angle={30}
-                tick={{ fill: '#475569', fontSize: 9 }}
-                tickCount={4}
-                axisLine={false}
-              />
-              {COUNTRIES.map(({ code, color, label }) => (
-                <Radar
-                  key={code}
-                  name={label}
-                  dataKey={code}
-                  stroke={color}
-                  fill={color}
-                  fillOpacity={0.12}
-                  strokeWidth={1.5}
-                />
-              ))}
-              <Legend
-                formatter={(v) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{v}</span>}
-                wrapperStyle={{ paddingTop: 8 }}
-              />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE.contentStyle}
-                labelStyle={TOOLTIP_STYLE.labelStyle}
-                itemStyle={TOOLTIP_STYLE.itemStyle}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
-        </SectionCard>
       </div>
     </div>
   )
