@@ -376,7 +376,7 @@ export async function fetchIndustryGDP(countryCode) {
 
 const MARKET_TICKERS = {
   'S&P 500': 'SPY', 'Global Industry ETF': 'VIS',
-  'Crude Oil': 'USO', 'Copper ETF': 'CPER', 'US Dollar Index': 'UUP',
+  'Crude Oil (WTI)': 'CL=F', 'Copper ETF': 'CPER', 'US Dollar Index': 'UUP',
 }
 
 async function _fetchTicker(symbol, label) {
