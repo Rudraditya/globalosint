@@ -112,14 +112,14 @@ function IndexTooltip({ active, payload, label }) {
 function SectionCard({ title, subtitle, lastUpdated, online, children }) {
   return (
     <div className="bg-zinc-950 rounded-xl border border-zinc-900">
-      <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900">
+      <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
         <div>
           <h2 className="text-white font-semibold text-sm">{title}</h2>
           {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
         </div>
         <LiveStatus online={online} lastUpdated={lastUpdated} />
       </div>
-      <div className="px-5 py-5">{children}</div>
+      <div className="px-5 py-4">{children}</div>
     </div>
   )
 }
@@ -177,7 +177,7 @@ export function SupplyProductionView() {
   const isOnline = !anyLoading && Object.keys(data).length > 0
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {COUNTRIES.map(({ code, label, color }) => {
@@ -217,7 +217,7 @@ export function SupplyProductionView() {
         ) : allErrored ? (
           <ErrorState message="Could not load production data" onRetry={reloadAll} />
         ) : (
-          <ResponsiveContainer width="100%" height={268}>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={growthRows} margin={{ top: 8, right: 8, bottom: 0, left: -8 }} barCategoryGap="30%">
               <defs>
                 {COUNTRIES.map(({ code, color }) => (
@@ -267,7 +267,7 @@ export function SupplyProductionView() {
         {anyLoading && indexRows.length === 0 ? (
           <SkeletonChart />
         ) : (
-          <ResponsiveContainer width="100%" height={252}>
+          <ResponsiveContainer width="100%" height={220}>
             <LineChart data={indexRows} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
               <defs>
                 {COUNTRIES.map(({ code, color }) => (

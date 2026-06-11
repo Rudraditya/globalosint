@@ -24,7 +24,7 @@ function Card({ children, className = '' }) {
 
 function CardHeader({ title, subtitle, right }) {
   return (
-    <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900">
+    <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
       <div>
         <h2 className="text-white font-semibold text-sm">{title}</h2>
         {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
@@ -290,7 +290,7 @@ export function MacroIndicatorsView() {
   const sourceList = [...new Set(Object.values(gdpSources))].join(', ')
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Country selector bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -319,13 +319,13 @@ export function MacroIndicatorsView() {
       {/* GDP time series area chart */}
       <Card>
         <CardHeader title="GDP Trend (USD Billions)" subtitle="10-year time series · Eurostat for EU members · World Bank for others" />
-        <div className="px-5 py-5">
+        <div className="px-5 py-4">
           {anyGdpLoading && gdpRows.length === 0 ? (
             <SkeletonChart />
           ) : gdpRows.length === 0 ? (
             <ErrorState message="No GDP data loaded" onRetry={() => selected.forEach(loadGDP)} />
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={gdpRows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <defs>
                   {selectedDefs.map(({ code, color }) => (
@@ -352,14 +352,14 @@ export function MacroIndicatorsView() {
       </Card>
 
       {/* Latest GDP bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader title="Latest GDP — Country Comparison" subtitle={latestBarData[0]?.year ? `USD billions · ${latestBarData[0].year}` : 'USD billions'} />
-          <div className="px-5 py-5">
+          <div className="px-5 py-4">
             {anyGdpLoading && gdpRows.length === 0 ? (
               <SkeletonChart />
             ) : (
-              <ResponsiveContainer width="100%" height={240}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={latestBarData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
                   <defs>
                     {selectedDefs.map(({ code, color }) => (
@@ -397,13 +397,13 @@ export function MacroIndicatorsView() {
             subtitle="vs USD · Yahoo Finance · 24h refresh"
             right={<LiveStatus online={forexRates.length > 0} lastUpdated={forexUpdated} />}
           />
-          <div className="px-5 py-5">
+          <div className="px-5 py-4">
             {forexLoading && forexRates.length === 0 ? (
               <div className="grid grid-cols-2 gap-3">
                 {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5 max-h-60 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto">
                 {forexRates.map((fx) => <ForexCard key={fx.pair} fx={fx} />)}
               </div>
             )}
@@ -413,20 +413,20 @@ export function MacroIndicatorsView() {
 
       {/* Financial market snapshot */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-baseline gap-3">
             <h2 className="text-white font-semibold text-sm">Financial Market Snapshot</h2>
-            <p className="text-zinc-600 text-xs mt-0.5">1-month performance · Yahoo Finance</p>
+            <p className="text-zinc-600 text-xs">1-month performance · Yahoo Finance</p>
           </div>
           <LiveStatus online={market.length > 0} lastUpdated={marketUpdated} />
         </div>
 
         {marketLoading && market.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {market.map((t) => <TickerCard key={t.symbol} ticker={t} />)}
           </div>
         )}

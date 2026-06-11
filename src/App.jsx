@@ -77,11 +77,11 @@ function PM2Badge({ stats, error }) {
 
 const VIEWS = [
   {
-    id: 'supply',
-    label: 'Global Supply & Production',
-    short: 'Supply',
-    icon: Globe,
-    description: 'Industrial output · Trade routes · OECD G20 production indices',
+    id: 'india',
+    label: 'India Focus',
+    short: 'India',
+    icon: Flag,
+    description: 'Indian macro indicators · FDI/FII · Trade · RBI forex · Economic news',
   },
   {
     id: 'macro',
@@ -91,23 +91,23 @@ const VIEWS = [
     description: 'GDP comparison · Currency rates · G20 + Africa · Eurostat / World Bank',
   },
   {
-    id: 'india',
-    label: 'India Focus',
-    short: 'India',
-    icon: Flag,
-    description: 'Indian macro indicators · FDI/FII · Trade · RBI forex · Economic news',
-  },
-  {
     id: 'commodities',
     label: 'Global Commodities',
     short: 'Commodities',
     icon: TrendingUp,
     description: 'Real-time commodity prices · Energy · Metals · Agriculture · 5-min refresh',
   },
+  {
+    id: 'supply',
+    label: 'Global Supply & Production',
+    short: 'Supply',
+    icon: Globe,
+    description: 'Industrial output · Trade routes · OECD G20 production indices',
+  },
 ]
 
 export default function App() {
-  const [view, setView] = useState('supply')
+  const [view, setView] = useState('india')
   const { stats, error } = usePM2Stats(5000)
   const active = VIEWS.find((v) => v.id === view)
 
@@ -153,18 +153,20 @@ export default function App() {
       </header>
 
       {/* Page heading */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-5">
-        <div className="flex items-center gap-2 text-zinc-700 text-xs mb-2 font-medium">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-3">
+        <div className="flex items-center gap-2 text-zinc-700 text-xs mb-1 font-medium">
           <span>Dashboard</span>
           <ChevronRight size={12} />
           <span className="text-zinc-400">{active?.label}</span>
         </div>
-        <h1 className="text-xl font-semibold text-white tracking-tight mb-1">{active?.label}</h1>
-        <p className="text-zinc-600 text-sm">{active?.description}</p>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-lg font-semibold text-white tracking-tight">{active?.label}</h1>
+          <p className="text-zinc-600 text-xs hidden sm:block">{active?.description}</p>
+        </div>
       </div>
 
       {/* View container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-10">
         {view === 'supply'      && <SupplyProductionView />}
         {view === 'macro'       && <MacroIndicatorsView />}
         {view === 'india'       && <IndiaFocusView />}
