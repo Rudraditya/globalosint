@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
-import { Globe, BarChart3, Activity, ChevronRight, Cpu, MemoryStick, Flag, TrendingUp } from 'lucide-react'
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { Globe, BarChart3, Activity, ChevronRight, Cpu, MemoryStick, Flag, TrendingUp, Crosshair } from 'lucide-react'
 import { SupplyProductionView } from './components/SupplyProductionView'
 import { MacroIndicatorsView } from './components/MacroIndicatorsView'
 import { IndiaFocusView } from './components/IndiaFocusView'
 import { CommodityView } from './components/CommodityView'
+
+const MarketEntryView = lazy(() => import('./components/MarketEntryView').then((m) => ({ default: m.MarketEntryView })))
 
 function fmtBytes(b) {
   if (b == null) return '—'
@@ -104,6 +106,13 @@ const VIEWS = [
     icon: Globe,
     description: 'Industrial output · Trade routes · OECD G20 production indices',
   },
+  {
+    id: 'entry',
+    label: 'Market Entry',
+    short: 'Entry',
+    icon: Crosshair,
+    description: "Porter's Five Forces · indicator-driven scoring · generic strategy recommendation",
+  },
 ]
 
 export default function App() {
@@ -171,6 +180,11 @@ export default function App() {
         {view === 'macro'       && <MacroIndicatorsView />}
         {view === 'india'       && <IndiaFocusView />}
         {view === 'commodities' && <CommodityView />}
+        {view === 'entry'       && (
+          <Suspense fallback={<div className="flex items-center justify-center h-64 text-zinc-600 text-sm">Loading…</div>}>
+            <MarketEntryView />
+          </Suspense>
+        )}
       </main>
     </div>
   )

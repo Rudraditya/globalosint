@@ -49,6 +49,14 @@ export async function fetchGDPUSD(iso2) {
   return rows.map((r) => ({ year: r.year, value: parseFloat((r.value / 1e9).toFixed(2)) }))
 }
 
+// Latest available { year, value } for any World Bank indicator code.
+export async function fetchWorldBankLatest(iso2, indicatorCode, yearsBack = 12) {
+  const rows = await wbFetch(iso2, indicatorCode, yearsBack)
+  const latest = rows.at(-1)
+  if (!latest) throw new Error(`No WB data: ${indicatorCode}/${iso2}`)
+  return latest
+}
+
 // ─── Eurostat (EU countries only) ────────────────────────────────────────────
 
 export async function fetchEurostatGDP(eurostatCode) {
