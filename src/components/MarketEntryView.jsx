@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip, Legend,
 } from 'recharts'
-import { RefreshCw, DollarSign, Sparkles, Crosshair, RotateCcw } from 'lucide-react'
+import { RefreshCw, DollarSign, Sparkles, Crosshair, RotateCcw, Layers, X } from 'lucide-react'
 import { ALL_COUNTRIES } from '../utils/api'
 import {
   fetchFiveForcesIndicators, deriveForcesFromIndicators,
@@ -39,6 +39,46 @@ function CardHeader({ title, subtitle, right }) {
         {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
       </div>
       {right}
+    </div>
+  )
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+
+function Modal({ open, onClose, title, subtitle, children }) {
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+    >
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-6xl max-h-[88vh] flex flex-col shadow-2xl shadow-black">
+        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900 flex-shrink-0">
+          <div>
+            <h2 className="text-white font-semibold text-sm">{title}</h2>
+            {subtitle && <p className="text-zinc-500 text-xs mt-0.5">{subtitle}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-zinc-600 hover:text-white transition-colors ml-4 mt-0.5"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-5 py-5">
+          {children}
+        </div>
+      </div>
     </div>
   )
 }
@@ -201,6 +241,8 @@ export function MarketEntryView() {
 
   const [layerToggles, setLayerToggles] = useState({ country: true, sector: true, industry: true })
 
+  const [tierModalOpen, setTierModalOpen] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [updated, setUpdated] = useState(null)
 
@@ -329,6 +371,13 @@ export function MarketEntryView() {
         >
           <RotateCcw size={12} />
           Reset
+        </button>
+        <button
+          onClick={() => setTierModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
+        >
+          <Layers size={12} />
+          Tier Indicators
         </button>
       </div>
 
@@ -468,29 +517,36 @@ export function MarketEntryView() {
       </div>
 
       {/* Indicator → Force mapping, grouped by tier */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <IndicatorPanel
-          title="Country Tier"
-          weight={Math.round(TIER_WEIGHTS.country * 100)}
-          color={TIER_COLORS.country}
-          meta={COUNTRY_INDICATOR_META}
-          values={countryIndicators}
-        />
-        <IndicatorPanel
-          title="Sector Tier"
-          weight={Math.round(TIER_WEIGHTS.sector * 100)}
-          color={TIER_COLORS.sector}
-          meta={SECTOR_INDICATOR_META}
-          values={sectorIndicators}
-        />
-        <IndicatorPanel
-          title="Industry Tier"
-          weight={Math.round(TIER_WEIGHTS.industry * 100)}
-          color={TIER_COLORS.industry}
-          meta={industryMeta}
-          values={industryIndicators}
-        />
-      </div>
+      <Modal
+        open={tierModalOpen}
+        onClose={() => setTierModalOpen(false)}
+        title="Tier Indicators"
+        subtitle="Indicator → Force mapping, grouped by Country / Sector / Industry tier"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <IndicatorPanel
+            title="Country Tier"
+            weight={Math.round(TIER_WEIGHTS.country * 100)}
+            color={TIER_COLORS.country}
+            meta={COUNTRY_INDICATOR_META}
+            values={countryIndicators}
+          />
+          <IndicatorPanel
+            title="Sector Tier"
+            weight={Math.round(TIER_WEIGHTS.sector * 100)}
+            color={TIER_COLORS.sector}
+            meta={SECTOR_INDICATOR_META}
+            values={sectorIndicators}
+          />
+          <IndicatorPanel
+            title="Industry Tier"
+            weight={Math.round(TIER_WEIGHTS.industry * 100)}
+            color={TIER_COLORS.industry}
+            meta={industryMeta}
+            values={industryIndicators}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
