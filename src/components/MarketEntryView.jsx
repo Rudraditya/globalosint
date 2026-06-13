@@ -332,8 +332,8 @@ export function MarketEntryView() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left panel — Radar chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Column 1 — Radar chart + Market Structure */}
         <div className="space-y-4">
           <Card>
             <CardHeader
@@ -359,7 +359,7 @@ export function MarketEntryView() {
               ))}
             </div>
             <div className="px-5 py-4">
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={260}>
                 <RadarChart data={radarData} outerRadius="75%">
                   <PolarGrid stroke="#27272a" />
                   <PolarAngleAxis dataKey="force" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
@@ -388,7 +388,7 @@ export function MarketEntryView() {
               title="Market Structure"
               subtitle={`${industry.label}${industry.hs6 ? ` · HS6 ${industry.hs6.code} (${industry.hs6.label})` : ' · services industry'}`}
             />
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-3">
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-3xl font-bold text-white tabular-nums">{marketStructure.cr4.toFixed(1)}%</p>
@@ -398,7 +398,7 @@ export function MarketEntryView() {
               <div className="h-1.5 rounded-full bg-zinc-900 overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${marketStructure.cr4}%`, background: ENTRY_ORANGE }} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {marketStructure.top4.map((p) => (
                   <div key={p.name} className="flex items-center justify-between text-xs py-1 border-b border-zinc-900 last:border-0">
                     <span className="text-zinc-300 font-medium">{p.name}</span>
@@ -414,50 +414,51 @@ export function MarketEntryView() {
           </Card>
         </div>
 
-        {/* Right panel — Strategy engine + sliders */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader title="Recommended Strategy" subtitle="Generated from the blended Five Forces score (Country 20% · Sector 30% · Industry 50%)" />
-            <div className="px-5 py-4 space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ background: `${meta.color}15`, borderColor: `${meta.color}40` }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${meta.color}25` }}>
-                  <StrategyIcon size={18} style={{ color: meta.color }} />
-                </div>
-                <div>
-                  <p className="text-white font-bold text-sm">
-                    {result.strategy}{result.focusVariant ? ` — ${result.focusVariant}` : ''}
-                  </p>
-                  <p className="text-zinc-400 text-xs mt-0.5">{meta.blurb}</p>
-                </div>
+        {/* Column 2 — Strategy engine */}
+        <Card className="h-fit">
+          <CardHeader title="Recommended Strategy" subtitle="Generated from the blended Five Forces score (Country 20% · Sector 30% · Industry 50%)" />
+          <div className="px-5 py-4 space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ background: `${meta.color}15`, borderColor: `${meta.color}40` }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${meta.color}25` }}>
+                <StrategyIcon size={18} style={{ color: meta.color }} />
               </div>
-
               <div>
-                <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Why this strategy</p>
-                <ul className="space-y-1.5">
-                  {result.drivers.map((d, i) => (
-                    <li key={i} className="text-zinc-400 text-xs leading-relaxed flex gap-2">
-                      <span className="text-zinc-700 flex-shrink-0">▸</span>
-                      <span>{d}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Strategy fit scores</p>
-                <StrategyScoreBars scores={result.scores} winner={result.strategy} />
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-zinc-600 pt-1 border-t border-zinc-900">
-                <span>Avg. force intensity: <span className="text-zinc-300 font-semibold">{result.avgIntensity}/10</span></span>
-                <span>Spread: <span className="text-zinc-300 font-semibold">{result.spread}/10</span></span>
+                <p className="text-white font-bold text-sm">
+                  {result.strategy}{result.focusVariant ? ` — ${result.focusVariant}` : ''}
+                </p>
+                <p className="text-zinc-400 text-xs mt-0.5">{meta.blurb}</p>
               </div>
             </div>
-          </Card>
 
+            <div>
+              <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Why this strategy</p>
+              <ul className="space-y-1.5">
+                {result.drivers.map((d, i) => (
+                  <li key={i} className="text-zinc-400 text-xs leading-relaxed flex gap-2">
+                    <span className="text-zinc-700 flex-shrink-0">▸</span>
+                    <span>{d}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Strategy fit scores</p>
+              <StrategyScoreBars scores={result.scores} winner={result.strategy} />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-zinc-600 pt-1 border-t border-zinc-900">
+              <span>Avg. force intensity: <span className="text-zinc-300 font-semibold">{result.avgIntensity}/10</span></span>
+              <span>Spread: <span className="text-zinc-300 font-semibold">{result.spread}/10</span></span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Column 3 — Sliders + indicator panels */}
+        <div className="space-y-4">
           <Card>
             <CardHeader title="Adjust Force Scores" subtitle="Drag to explore — the recommendation updates instantly from this blended score" />
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-3">
               {FORCE_DEFS.map((def) => (
                 <ForceSlider key={def.key} def={def} value={forces[def.key]} onChange={setForce} />
               ))}

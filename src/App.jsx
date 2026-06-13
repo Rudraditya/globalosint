@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Globe, BarChart3, Activity, ChevronRight, Cpu, MemoryStick, Flag, TrendingUp, Crosshair } from 'lucide-react'
+import { Globe, BarChart3, Activity, ChevronRight, ChevronDown, Cpu, MemoryStick, Flag, TrendingUp, Crosshair } from 'lucide-react'
 import { SupplyProductionView } from './components/SupplyProductionView'
 import { MacroIndicatorsView } from './components/MacroIndicatorsView'
 import { IndiaFocusView } from './components/IndiaFocusView'
@@ -136,27 +136,23 @@ export default function App() {
             <PM2Badge stats={stats} error={error} />
           </div>
 
-          <nav className="flex gap-1 overflow-x-auto" aria-label="Dashboard views">
-            {VIEWS.map((v) => {
-              const Icon = v.icon
-              const isActive = view === v.id
-              return (
-                <button
-                  key={v.id}
-                  onClick={() => setView(v.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap ${
-                    isActive
-                      ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40'
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
-                  }`}
-                >
-                  <Icon size={14} />
-                  <span className="hidden md:inline">{v.label}</span>
-                  <span className="md:hidden">{v.short}</span>
-                </button>
-              )
-            })}
+          <nav className="flex items-center gap-2 flex-shrink-0" aria-label="Dashboard views">
+            {active && (
+              <active.icon size={15} className="text-orange-400 hidden sm:block flex-shrink-0" />
+            )}
+            <div className="relative">
+              <select
+                value={view}
+                onChange={(e) => setView(e.target.value)}
+                aria-label="Select dashboard view"
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-sm font-medium text-white hover:border-zinc-700 transition-colors focus:outline-none focus:border-orange-500/60 cursor-pointer"
+              >
+                {VIEWS.map((v) => (
+                  <option key={v.id} value={v.id}>{v.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+            </div>
           </nav>
         </div>
       </header>
