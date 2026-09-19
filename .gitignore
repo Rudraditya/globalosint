@@ -7,3 +7,6 @@ pm2-api.mjs
 
 .claude/settings.local.json
 !docs/*.png
+
+.vercel
+.env*
