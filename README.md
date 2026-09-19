@@ -2,6 +2,16 @@
 
 An interactive geopolitical intelligence dashboard that visualises global industrial production, macroeconomic indicators, India-focused economic data, and real-time commodity pricing — built with React, Recharts, and Vite.
 
+
+![India Focus dashboard](docs/india-focus.png)
+
+<table>
+  <tr>
+    <td><img src="docs/macro-indicators.png" alt="Macro Indicators view"></td>
+    <td><img src="docs/commodities.png" alt="Global Commodities view"></td>
+  </tr>
+</table>
+
 ---
 
 ## Table of Contents

@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/yahoo-finance/:path*", "destination": "https://query1.finance.yahoo.com/:path*" },
+    { "source": "/eurostat-api/:path*", "destination": "https://ec.europa.eu/:path*" },
+    { "source": "/imf-data/:path*", "destination": "https://dataservices.imf.org/:path*" }
+  ]
+}

@@ -6,3 +6,4 @@ screenshot_full.mjs
 pm2-api.mjs
 
 .claude/settings.local.json
+!docs/*.png
