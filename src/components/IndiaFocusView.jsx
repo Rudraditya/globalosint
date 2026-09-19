@@ -1,106 +1,52 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Minus, X, ChevronRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react'
 import { fetchIndiaMacro, fetchIndiaRBIForex } from '../utils/api'
 import { SkeletonChart, SkeletonCard } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { LiveStatus } from './LiveStatus'
+import { Modal } from './Modal'
+import { Card, CardHeader } from './Card'
+import { AnimatedNumber } from './AnimatedNumber'
+import { staggerIn } from '../utils/animations'
 
-const INDIA_ORANGE = '#ff6b35'
+const BRAND = '#5a8cff'
 
 const TT = {
-  contentStyle: { background: '#0a0a0a', border: '1px solid #27272a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
+  contentStyle: { background: '#0a0e16', border: '1px solid rgba(148,163,184,0.15)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
   labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
-}
-
-// ── Modal ──────────────────────────────────────────────────────────────────
-
-function Modal({ open, onClose, title, subtitle, children }) {
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [open, onClose])
-
-  if (!open) return null
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-    >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl shadow-black">
-        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900 flex-shrink-0">
-          <div>
-            <h2 className="text-white font-semibold text-sm">{title}</h2>
-            {subtitle && <p className="text-zinc-500 text-xs mt-0.5">{subtitle}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-zinc-600 hover:text-white transition-colors ml-4 mt-0.5"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 px-5 py-5">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Card ───────────────────────────────────────────────────────────────────
-
-function Card({ children, className = '' }) {
-  return <div className={`bg-zinc-950 rounded-xl border border-zinc-900 ${className}`}>{children}</div>
-}
-
-function CardHeader({ title, subtitle, right }) {
-  return (
-    <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
-      <div>
-        <h2 className="text-white font-semibold text-sm">{title}</h2>
-        {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
-  )
 }
 
 // ── Metric card — clickable when onClick provided ──────────────────────────
 
-function MetricCard({ label, value, unit, year, change, color = INDIA_ORANGE, loading, error, onClick }) {
+function MetricCard({ label, value, unit, year, change, color = BRAND, loading, error, onClick }) {
   const up = change > 0, flat = change === 0 || change == null
-  const trendColor = flat ? 'text-zinc-500' : up ? 'text-green-400' : 'text-red-400'
+  const trendColor = flat ? 'text-slate-500' : up ? 'text-green-400' : 'text-red-400'
 
   if (loading) return <SkeletonCard />
 
   return (
     <div
-      className={`bg-zinc-950 rounded-xl p-3.5 border border-zinc-900 transition-colors ${onClick ? 'cursor-pointer hover:border-zinc-700 hover:bg-zinc-900/60 group' : 'hover:border-zinc-800'}`}
+      className={`glass-card glass-hover rounded-xl p-3.5 transition-colors ${onClick ? 'cursor-pointer group' : ''}`}
       style={{ borderTopColor: color, borderTopWidth: 2 }}
       onClick={onClick}
     >
-      <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-1.5 flex items-center justify-between">
+      <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold mb-1.5 flex items-center justify-between">
         <span>{label}</span>
-        {onClick && <ChevronRight size={11} className="text-zinc-700 group-hover:text-zinc-500 transition-colors" />}
+        {onClick && <ChevronRight size={11} className="text-slate-700 group-hover:text-slate-500 transition-colors" />}
       </p>
       <p className="text-xl font-bold text-white tabular-nums mb-0.5">
-        {error ? <span className="text-zinc-700 text-sm">Unavailable</span>
-          : value != null ? `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : <span className="text-zinc-700">—</span>}
+        {error ? <span className="text-slate-700 text-sm">Unavailable</span>
+          : value != null ? <AnimatedNumber value={value} format={(v) => v.toLocaleString(undefined, { maximumFractionDigits: 2 })} /> : <span className="text-slate-700">—</span>}
       </p>
       <div className="flex items-center justify-between">
-        <span className="text-zinc-600 text-[10px]">{unit}{year ? ` · ${year}` : ''}</span>
+        <span className="text-slate-600 text-[10px]">{unit}{year ? ` · ${year}` : ''}</span>
         {change != null && (
           <div className="flex items-center gap-1">
-            {flat ? <Minus size={9} className="text-zinc-600" /> : up ? <TrendingUp size={9} className="text-green-400" /> : <TrendingDown size={9} className="text-red-400" />}
+            {flat ? <Minus size={9} className="text-slate-600" /> : up ? <TrendingUp size={9} className="text-green-400" /> : <TrendingDown size={9} className="text-red-400" />}
             <span className={`text-[10px] font-semibold ${trendColor}`}>{change > 0 ? '+' : ''}{change.toFixed(1)}%</span>
           </div>
         )}
@@ -112,7 +58,7 @@ function MetricCard({ label, value, unit, year, change, color = INDIA_ORANGE, lo
 // ── Charts ─────────────────────────────────────────────────────────────────
 
 function MiniLineChart({ series, color, dataKey = 'value', unit = '', height = 160 }) {
-  if (!series?.length) return <div className="flex items-center justify-center text-zinc-700 text-xs" style={{ height }}>No data</div>
+  if (!series?.length) return <div className="flex items-center justify-center text-slate-700 text-xs" style={{ height }}>No data</div>
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
@@ -131,7 +77,7 @@ function MiniLineChart({ series, color, dataKey = 'value', unit = '', height = 1
 }
 
 function TradeChart({ exports, imports, height = 200 }) {
-  if (!exports?.length && !imports?.length) return <div className="flex items-center justify-center text-zinc-700 text-xs" style={{ height }}>No data</div>
+  if (!exports?.length && !imports?.length) return <div className="flex items-center justify-center text-slate-700 text-xs" style={{ height }}>No data</div>
   const years = [...new Set([...exports.map((r) => r.year), ...imports.map((r) => r.year)])].sort()
   const data = years.map((y) => ({
     year: y,
@@ -160,7 +106,7 @@ function TradeChart({ exports, imports, height = 200 }) {
 }
 
 function GDPDeflatorChart({ nomSeries, realSeries, height = 180 }) {
-  if (!nomSeries?.length || !realSeries?.length) return <div className="flex items-center justify-center text-zinc-700 text-xs" style={{ height }}>No data</div>
+  if (!nomSeries?.length || !realSeries?.length) return <div className="flex items-center justify-center text-slate-700 text-xs" style={{ height }}>No data</div>
   const data = nomSeries.map((row) => {
     const real = realSeries.find((r) => r.year === row.year)
     const deflator = real?.value && real.value !== 0 ? parseFloat(((row.value / real.value) * 100).toFixed(2)) : null
@@ -189,7 +135,7 @@ function GDPDeflatorChart({ nomSeries, realSeries, height = 180 }) {
 }
 
 function GDPNomVsRealChart({ nomSeries, realSeries, height = 200 }) {
-  if (!nomSeries?.length || !realSeries?.length) return <div className="flex items-center justify-center text-zinc-700 text-xs" style={{ height }}>No data</div>
+  if (!nomSeries?.length || !realSeries?.length) return <div className="flex items-center justify-center text-slate-700 text-xs" style={{ height }}>No data</div>
   const years = [...new Set([...nomSeries.map(r => r.year), ...realSeries.map(r => r.year)])].sort()
   const data = years.map(y => ({
     year: y,
@@ -205,7 +151,7 @@ function GDPNomVsRealChart({ nomSeries, realSeries, height = 200 }) {
         <Tooltip contentStyle={TT.contentStyle} labelStyle={TT.labelStyle}
           formatter={(v, name) => [`$${v} B`, name.charAt(0).toUpperCase() + name.slice(1)]} />
         <Legend formatter={(v) => <span style={{ color: '#71717a', fontSize: 11 }}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>} wrapperStyle={{ paddingTop: 8 }} />
-        <Line type="monotone" dataKey="nominal" stroke={INDIA_ORANGE} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: INDIA_ORANGE }} connectNulls />
+        <Line type="monotone" dataKey="nominal" stroke={BRAND} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: BRAND }} connectNulls />
         <Line type="monotone" dataKey="real" stroke="#60a5fa" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: '#60a5fa' }} connectNulls strokeDasharray="4 2" />
       </LineChart>
     </ResponsiveContainer>
@@ -217,12 +163,12 @@ function RBIForexCard({ rbiData }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {Object.entries(rbiData.rates).map(([base, info]) => (
-        <div key={base} className="bg-zinc-900 rounded-xl p-3.5 border border-zinc-800 text-center">
-          <p className="text-zinc-500 text-xs font-semibold tracking-wider mb-1">{info.label}</p>
+        <div key={base} className="glass-card glass-hover rounded-xl p-3.5 text-center">
+          <p className="text-slate-500 text-xs font-semibold tracking-wider mb-1">{info.label}</p>
           <p className="text-xl font-bold text-white tabular-nums">
-            {info.rate != null ? info.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+            {info.rate != null ? <AnimatedNumber value={info.rate} format={(v) => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} /> : '—'}
           </p>
-          {info.date && <p className="text-zinc-600 text-[10px] mt-1">{info.date}</p>}
+          {info.date && <p className="text-slate-600 text-[10px] mt-1">{info.date}</p>}
         </div>
       ))}
     </div>
@@ -234,7 +180,7 @@ function RBIForexCard({ rbiData }) {
 function MetricDetailContent({ metricKey, label, getSeries, macro, macroLoading }) {
   const series = getSeries(metricKey)
   const configs = {
-    gdp_nom: { color: INDIA_ORANGE, unit: 'B USD', Chart: ({ s }) => <GDPNomVsRealChart nomSeries={s} realSeries={getSeries('gdp_real')} height={220} /> },
+    gdp_nom: { color: BRAND, unit: 'B USD', Chart: ({ s }) => <GDPNomVsRealChart nomSeries={s} realSeries={getSeries('gdp_real')} height={220} /> },
     gdp_real: { color: '#60a5fa', unit: 'B USD' },
     inflation: { color: '#f59e0b', unit: '%' },
     fdi: { color: '#22c55e', unit: 'B USD' },
@@ -246,7 +192,7 @@ function MetricDetailContent({ metricKey, label, getSeries, macro, macroLoading 
     fii: { color: '#818cf8', unit: 'B USD' },
     gross_sav: { color: '#fbbf24', unit: '% GNI' },
   }
-  const cfg = configs[metricKey] ?? { color: INDIA_ORANGE, unit: '' }
+  const cfg = configs[metricKey] ?? { color: BRAND, unit: '' }
 
   if (macroLoading && !macro) return <SkeletonChart />
 
@@ -267,6 +213,7 @@ export function IndiaFocusView() {
 
   // Modal state: { key, label } or null
   const [modal, setModal] = useState(null)
+  const metricGridRef = useRef(null)
 
   const loadMacro = useCallback(async () => {
     setMacroLoading(true)
@@ -293,6 +240,12 @@ export function IndiaFocusView() {
     loadRBI()
   }, [loadMacro, loadRBI])
 
+  useEffect(() => {
+    if (macro && metricGridRef.current) {
+      staggerIn(metricGridRef.current.children)
+    }
+  }, [macro])
+
   const m = macro
   const getLatest = (key) => m?.[key]?.latest
   const getYear = (key) => m?.[key]?.latestYear
@@ -311,7 +264,7 @@ export function IndiaFocusView() {
 
   // Metric definitions for the compact grid
   const metrics = [
-    { key: 'gdp_nom',   label: 'GDP (Nominal)',       unit: 'B USD',   color: INDIA_ORANGE },
+    { key: 'gdp_nom',   label: 'GDP (Nominal)',       unit: 'B USD',   color: BRAND },
     { key: 'inflation', label: 'CPI Inflation',        unit: '%',       color: '#f59e0b' },
     { key: 'fdi',       label: 'FDI Net Inflows',      unit: 'B USD',   color: '#22c55e' },
     { key: 'forex_res', label: 'Forex Reserves',       unit: 'B USD',   color: '#38bdf8' },
@@ -330,19 +283,19 @@ export function IndiaFocusView() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-lg" style={{ background: '#ff6b3520', border: '1px solid #ff6b3540' }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-lg bg-gradient-brand ring-1 ring-white/10">
             🇮🇳
           </div>
           <div>
             <h2 className="text-white font-semibold text-sm">India Economic Dashboard</h2>
-            <p className="text-zinc-600 text-xs">World Bank · RBI · Click any metric for trend chart</p>
+            <p className="text-slate-600 text-xs">World Bank · RBI · Click any metric for trend chart</p>
           </div>
         </div>
         <LiveStatus online={!macroLoading && !!macro} lastUpdated={macroUpdated} label="World Bank" />
       </div>
 
       {/* Compact 5-col metric grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      <div ref={metricGridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
         {metrics.map(({ key, label, unit, color }) => (
           <MetricCard
             key={key}
@@ -361,7 +314,7 @@ export function IndiaFocusView() {
 
       {/* GDP trend + RBI Forex side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card hoverable>
           <CardHeader
             title="GDP — Nominal vs Real"
             subtitle="USD Billions · 10-year view"
@@ -374,7 +327,7 @@ export function IndiaFocusView() {
           </div>
         </Card>
 
-        <Card>
+        <Card hoverable>
           <CardHeader
             title="INR Exchange Rates"
             subtitle="USD/INR · EUR/INR · GBP/INR · Yahoo Finance"
@@ -396,7 +349,7 @@ export function IndiaFocusView() {
 
       {/* Trade balance + Forex reserves inline */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card hoverable>
           <CardHeader title="Exports vs Imports" subtitle="Goods & Services · USD Billions" />
           <div className="px-5 py-4">
             {macroLoading && !macro ? <SkeletonChart /> : (
@@ -405,7 +358,7 @@ export function IndiaFocusView() {
           </div>
         </Card>
 
-        <Card>
+        <Card hoverable>
           <CardHeader title="Forex Reserves" subtitle="Total reserve assets · USD Billions" />
           <div className="px-5 py-4">
             {macroLoading && !macro ? <SkeletonChart /> : (

@@ -45,13 +45,13 @@ export function WorldMap() {
   const routeCount = filtered.length
 
   return (
-    <div className="bg-zinc-950 rounded-xl border border-zinc-900 overflow-hidden">
+    <div className="glass-card rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b border-zinc-900">
+      <div className="px-5 pt-5 pb-4 border-b border-white/[0.06]">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
-            <h2 className="text-white font-semibold text-sm">Global Supply Chain Routes</h2>
-            <p className="text-zinc-600 text-xs mt-0.5">
+            <h2 className="text-white font-semibold text-sm font-display">Global Supply Chain Routes</h2>
+            <p className="text-slate-600 text-xs mt-0.5">
               {routeCount} route{routeCount !== 1 ? 's' : ''} · Click a marker to inspect
             </p>
           </div>
@@ -62,8 +62,8 @@ export function WorldMap() {
               onClick={() => setFilterRisk('all')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
                 filterRisk === 'all'
-                  ? 'bg-indigo-600 border-indigo-500 text-white'
-                  : 'bg-transparent text-zinc-500 border-zinc-800 hover:border-slate-500 hover:text-zinc-400'
+                  ? 'bg-gradient-brand border-transparent text-white'
+                  : 'bg-transparent text-slate-500 border-white/[0.08] hover:border-brand-500/40 hover:text-slate-400'
               }`}
             >
               All
@@ -75,7 +75,7 @@ export function WorldMap() {
                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
                   filterRisk === level
                     ? 'border-transparent text-white'
-                    : 'bg-transparent text-zinc-500 border-zinc-800 hover:border-slate-500 hover:text-zinc-400'
+                    : 'bg-transparent text-slate-500 border-slate-800 hover:border-slate-500 hover:text-slate-400'
                 }`}
                 style={
                   filterRisk === level
@@ -189,7 +189,7 @@ export function WorldMap() {
               key={ariaLabel}
               onClick={action}
               aria-label={ariaLabel}
-              className="w-7 h-7 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-md flex items-center justify-center transition-colors border border-zinc-800/50 backdrop-blur-sm"
+              className="w-7 h-7 bg-slate-900/90 hover:bg-slate-800 text-slate-500 hover:text-white rounded-md flex items-center justify-center transition-colors border border-slate-800/50 backdrop-blur-sm"
             >
               {label}
             </button>
@@ -218,14 +218,14 @@ export function WorldMap() {
                   </span>
                 </div>
                 <h3 className="text-white font-semibold text-base mt-1.5">{selected.name}</h3>
-                <p className="text-zinc-500 text-xs mt-0.5 font-medium">
+                <p className="text-slate-500 text-xs mt-0.5 font-medium">
                   {selected.share} &nbsp;·&nbsp; {selected.volume}
                 </p>
               </div>
               <button
                 onClick={handleDismiss}
                 aria-label="Close detail panel"
-                className="text-zinc-600 hover:text-zinc-400 transition-colors p-1 -mt-0.5 -mr-0.5 rounded flex-shrink-0"
+                className="text-slate-600 hover:text-slate-400 transition-colors p-1 -mt-0.5 -mr-0.5 rounded flex-shrink-0"
               >
                 <X size={16} />
               </button>
@@ -233,14 +233,14 @@ export function WorldMap() {
 
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <p className="text-zinc-700 text-xs mb-1.5 uppercase tracking-wider font-medium">
+                <p className="text-slate-700 text-xs mb-1.5 uppercase tracking-wider font-medium">
                   Commodities
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {selected.commodities.map((c) => (
                     <span
                       key={c}
-                      className="px-2 py-0.5 bg-zinc-900 text-zinc-400 rounded-md text-xs border border-zinc-800"
+                      className="px-2 py-0.5 bg-slate-900 text-slate-400 rounded-md text-xs border border-slate-800"
                     >
                       {c}
                     </span>
@@ -248,10 +248,10 @@ export function WorldMap() {
                 </div>
               </div>
               <div>
-                <p className="text-zinc-700 text-xs mb-1.5 uppercase tracking-wider font-medium">
+                <p className="text-slate-700 text-xs mb-1.5 uppercase tracking-wider font-medium">
                   Primary Risk
                 </p>
-                <p className="text-zinc-400 text-xs leading-relaxed">{selected.risk}</p>
+                <p className="text-slate-400 text-xs leading-relaxed">{selected.risk}</p>
               </div>
             </div>
           </div>
@@ -264,7 +264,7 @@ export function WorldMap() {
           <button
             key={level}
             onClick={() => setFilterRisk(filterRisk === level ? 'all' : level)}
-            className="flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-400 transition-colors"
           >
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"

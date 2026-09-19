@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip, Legend,
 } from 'recharts'
-import { RefreshCw, DollarSign, Sparkles, Crosshair, RotateCcw, Layers, X } from 'lucide-react'
+import { RefreshCw, DollarSign, Sparkles, Crosshair, RotateCcw, Layers } from 'lucide-react'
 import { ALL_COUNTRIES } from '../utils/api'
 import {
   fetchFiveForcesIndicators, deriveForcesFromIndicators,
@@ -13,74 +13,22 @@ import {
 import { recommendStrategy, blendForces, TIER_WEIGHTS, FORCE_DEFS, DEFAULT_FORCES } from '../utils/strategyEngine'
 import { SECTORS, getIndustriesForSector, getIndustry, computeCR4, classifyConcentration } from '../utils/industryTaxonomy'
 import { LiveStatus } from './LiveStatus'
+import { Modal } from './Modal'
+import { Card, CardHeader } from './Card'
+import { AnimatedNumber } from './AnimatedNumber'
+import { staggerIn } from '../utils/animations'
 
 const TT = {
-  contentStyle: { background: '#0a0a0a', border: '1px solid #27272a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
+  contentStyle: { background: '#0a0e16', border: '1px solid rgba(148,163,184,0.15)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
   labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
 }
 
-const ENTRY_ORANGE = '#ff6b35'
+const BRAND = '#5a8cff'
 
 const TIER_COLORS = {
   country: '#818cf8',
   sector: '#c084fc',
   industry: '#4ade80',
-}
-
-function Card({ children, className = '' }) {
-  return <div className={`bg-zinc-950 rounded-xl border border-zinc-900 ${className}`}>{children}</div>
-}
-
-function CardHeader({ title, subtitle, right }) {
-  return (
-    <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
-      <div>
-        <h2 className="text-white font-semibold text-sm">{title}</h2>
-        {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
-  )
-}
-
-// ── Modal ────────────────────────────────────────────────────────────────────
-
-function Modal({ open, onClose, title, subtitle, children }) {
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [open, onClose])
-
-  if (!open) return null
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-    >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-6xl max-h-[88vh] flex flex-col shadow-2xl shadow-black">
-        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-zinc-900 flex-shrink-0">
-          <div>
-            <h2 className="text-white font-semibold text-sm">{title}</h2>
-            {subtitle && <p className="text-zinc-500 text-xs mt-0.5">{subtitle}</p>}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-zinc-600 hover:text-white transition-colors ml-4 mt-0.5"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 px-5 py-5">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── Strategy metadata ───────────────────────────────────────────────────────
@@ -135,11 +83,11 @@ function ForceSlider({ def, value, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="text-zinc-300 text-xs font-semibold flex items-center gap-2">
+        <label className="text-slate-300 text-xs font-semibold flex items-center gap-2">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: def.color }} />
           {def.label}
         </label>
-        <span className="text-white text-xs font-bold tabular-nums w-6 text-right">{value}</span>
+        <span className="text-white text-xs font-bold tabular-nums w-6 text-right"><AnimatedNumber value={value} format={(v) => Math.round(v)} duration={300} /></span>
       </div>
       <input
         type="range"
@@ -148,10 +96,10 @@ function ForceSlider({ def, value, onChange }) {
         step={1}
         value={value}
         onChange={(e) => onChange(def.key, Number(e.target.value))}
-        className="w-full h-1.5 rounded-full appearance-none bg-zinc-800 cursor-pointer"
+        className="w-full h-1.5 rounded-full appearance-none bg-slate-800 cursor-pointer"
         style={{ accentColor: def.color }}
       />
-      <p className="text-zinc-600 text-[10px] mt-1">{def.description}</p>
+      <p className="text-slate-600 text-[10px] mt-1">{def.description}</p>
     </div>
   )
 }
@@ -168,10 +116,10 @@ function StrategyScoreBars({ scores, winner }) {
         return (
           <div key={name}>
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-medium ${name === winner ? 'text-white' : 'text-zinc-500'}`}>{name}</span>
-              <span className="text-zinc-500 text-xs tabular-nums">{score}</span>
+              <span className={`text-xs font-medium ${name === winner ? 'text-white' : 'text-slate-500'}`}>{name}</span>
+              <span className="text-slate-500 text-xs tabular-nums">{score}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-zinc-900 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-slate-900 overflow-hidden">
               <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: meta.color, opacity: name === winner ? 1 : 0.4 }} />
             </div>
           </div>
@@ -185,7 +133,7 @@ function StrategyScoreBars({ scores, winner }) {
 
 function IndicatorPanel({ title, weight, color, meta, values }) {
   return (
-    <Card>
+    <Card hoverable>
       <CardHeader
         title={title}
         subtitle={values ? 'Live indicator values' : 'Load market indicators to populate'}
@@ -201,14 +149,14 @@ function IndicatorPanel({ title, weight, color, meta, values }) {
             {Object.entries(meta).map(([key, m]) => {
               const v = values[key]
               return (
-                <div key={key} className="flex items-center justify-between text-xs py-1 border-b border-zinc-900 last:border-0">
+                <div key={key} className="flex items-center justify-between text-xs py-1 border-b border-slate-900 last:border-0">
                   <div>
-                    <span className="text-zinc-300 font-medium">{m.label}</span>
-                    <span className="text-zinc-600 ml-2">{m.unit}</span>
+                    <span className="text-slate-300 font-medium">{m.label}</span>
+                    <span className="text-slate-600 ml-2">{m.unit}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-white font-semibold tabular-nums">{v != null ? m.fmt(v) : '—'}</span>
-                    <span className="text-zinc-600">→</span>
+                    <span className="text-slate-600">→</span>
                     <span className="font-medium" style={{ color }}>{m.maps}</span>
                   </div>
                 </div>
@@ -216,7 +164,7 @@ function IndicatorPanel({ title, weight, color, meta, values }) {
             })}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-24 text-zinc-700 text-xs">No indicator data loaded</div>
+          <div className="flex items-center justify-center h-24 text-slate-700 text-xs">No indicator data loaded</div>
         )}
       </div>
     </Card>
@@ -245,6 +193,7 @@ export function MarketEntryView() {
 
   const [loading, setLoading] = useState(false)
   const [updated, setUpdated] = useState(null)
+  const columnsRef = useRef(null)
 
   const industry = useMemo(() => getIndustry(industryId), [industryId])
   const sectorIndustries = useMemo(() => getIndustriesForSector(sectorId), [sectorId])
@@ -295,6 +244,10 @@ export function MarketEntryView() {
 
   const toggleLayer = (key) => setLayerToggles((t) => ({ ...t, [key]: !t[key] }))
 
+  useEffect(() => {
+    if (columnsRef.current) staggerIn(columnsRef.current.children)
+  }, [country, sectorId, industryId])
+
   const result = useMemo(() => recommendStrategy(forces), [forces])
   const meta = STRATEGY_META[result.strategy]
   const StrategyIcon = meta.icon
@@ -317,12 +270,12 @@ export function MarketEntryView() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${ENTRY_ORANGE}20`, border: `1px solid ${ENTRY_ORANGE}40` }}>
-            <Crosshair size={15} style={{ color: ENTRY_ORANGE }} />
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${BRAND}20`, border: `1px solid ${BRAND}40` }}>
+            <Crosshair size={15} style={{ color: BRAND }} />
           </div>
           <div>
             <h2 className="text-white font-semibold text-sm">Market Entry Strategy Lab</h2>
-            <p className="text-zinc-600 text-xs">Porter's Five Forces · Country → Sector → Industry drill-down · generic strategy engine</p>
+            <p className="text-slate-600 text-xs">Porter's Five Forces · Country → Sector → Industry drill-down · generic strategy engine</p>
           </div>
         </div>
         <LiveStatus online={!!countryForces} lastUpdated={updated} label={liveLabel} />
@@ -333,7 +286,7 @@ export function MarketEntryView() {
         <select
           value={country}
           onChange={(e) => setCountry(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:border-zinc-700 transition-colors focus:outline-none focus:border-zinc-600"
+          className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-slate-300 hover:border-brand-500/40 transition-colors focus:outline-none focus:border-brand-500/60"
         >
           {ALL_COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>{c.label}</option>
@@ -342,7 +295,7 @@ export function MarketEntryView() {
         <select
           value={sectorId}
           onChange={(e) => handleSectorChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:border-zinc-700 transition-colors focus:outline-none focus:border-zinc-600"
+          className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-slate-300 hover:border-brand-500/40 transition-colors focus:outline-none focus:border-brand-500/60"
         >
           {SECTORS.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
@@ -351,7 +304,7 @@ export function MarketEntryView() {
         <select
           value={industryId}
           onChange={(e) => setIndustryId(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:border-zinc-700 transition-colors focus:outline-none focus:border-zinc-600"
+          className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-slate-300 hover:border-brand-500/40 transition-colors focus:outline-none focus:border-brand-500/60"
         >
           {sectorIndustries.map((ind) => (
             <option key={ind.id} value={ind.id}>{ind.label}</option>
@@ -360,31 +313,31 @@ export function MarketEntryView() {
         <button
           onClick={loadIndicators}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-brand hover:brightness-110 disabled:opacity-50 text-white text-xs font-medium transition-all shadow-[0_2px_12px_-2px_rgba(59,107,245,0.6)]"
         >
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
           {loading ? 'Loading…' : 'Load Market Indicators'}
         </button>
         <button
           onClick={resetForces}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:border-white/20 text-slate-400 hover:text-white text-xs font-medium transition-colors"
         >
           <RotateCcw size={12} />
           Reset
         </button>
         <button
           onClick={() => setTierModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:border-white/20 text-slate-400 hover:text-white text-xs font-medium transition-colors"
         >
           <Layers size={12} />
           Tier Indicators
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div ref={columnsRef} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Column 1 — Radar chart + Market Structure */}
         <div className="space-y-4">
-          <Card>
+          <Card hoverable>
             <CardHeader
               title="Five Forces Radar"
               subtitle="1 (weak) – 10 (strong) · dashed line = neutral baseline · toggle layers below"
@@ -425,14 +378,14 @@ export function MarketEntryView() {
                   {industryForces && layerToggles.industry && (
                     <Radar name="Industry Reality" dataKey="industry" stroke={TIER_COLORS.industry} strokeDasharray="3 2" fill={TIER_COLORS.industry} fillOpacity={0.06} strokeWidth={1.5} />
                   )}
-                  <Radar name="Blended Score" dataKey="blended" stroke={ENTRY_ORANGE} fill={ENTRY_ORANGE} fillOpacity={0.25} strokeWidth={2} />
+                  <Radar name="Blended Score" dataKey="blended" stroke={BRAND} fill={BRAND} fillOpacity={0.25} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           {/* Market Structure */}
-          <Card>
+          <Card hoverable>
             <CardHeader
               title="Market Structure"
               subtitle={`${industry.label}${industry.hs6 ? ` · HS6 ${industry.hs6.code} (${industry.hs6.label})` : ' · services industry'}`}
@@ -440,31 +393,31 @@ export function MarketEntryView() {
             <div className="px-5 py-4 space-y-3">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-white tabular-nums">{marketStructure.cr4.toFixed(1)}%</p>
-                  <p className="text-zinc-500 text-xs mt-0.5">CR4 — top 4 of {industry.peers.length} peers · {concentration}</p>
+                  <p className="text-3xl font-bold text-white tabular-nums"><AnimatedNumber value={marketStructure.cr4} format={(v) => `${v.toFixed(1)}%`} /></p>
+                  <p className="text-slate-500 text-xs mt-0.5">CR4 — top 4 of {industry.peers.length} peers · {concentration}</p>
                 </div>
               </div>
-              <div className="h-1.5 rounded-full bg-zinc-900 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${marketStructure.cr4}%`, background: ENTRY_ORANGE }} />
+              <div className="h-1.5 rounded-full bg-slate-900 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${marketStructure.cr4}%`, background: BRAND }} />
               </div>
               <div className="space-y-1">
                 {marketStructure.top4.map((p) => (
-                  <div key={p.name} className="flex items-center justify-between text-xs py-1 border-b border-zinc-900 last:border-0">
-                    <span className="text-zinc-300 font-medium">{p.name}</span>
+                  <div key={p.name} className="flex items-center justify-between text-xs py-1 border-b border-slate-900 last:border-0">
+                    <span className="text-slate-300 font-medium">{p.name}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-zinc-500 tabular-nums">${p.revenueUSDbn.toFixed(1)}B rev.</span>
+                      <span className="text-slate-500 tabular-nums">${p.revenueUSDbn.toFixed(1)}B rev.</span>
                       <span className="text-white font-semibold tabular-nums w-12 text-right">{p.share.toFixed(1)}%</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-zinc-700 text-[10px]">Illustrative peer revenue figures — see industryTaxonomy.js for sourcing notes.</p>
+              <p className="text-slate-700 text-[10px]">Illustrative peer revenue figures — see industryTaxonomy.js for sourcing notes.</p>
             </div>
           </Card>
         </div>
 
         {/* Column 2 — Strategy engine */}
-        <Card className="h-fit">
+        <Card hoverable className="h-fit">
           <CardHeader title="Recommended Strategy" subtitle="Generated from the blended Five Forces score (Country 20% · Sector 30% · Industry 50%)" />
           <div className="px-5 py-4 space-y-3">
             <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ background: `${meta.color}15`, borderColor: `${meta.color}40` }}>
@@ -475,16 +428,16 @@ export function MarketEntryView() {
                 <p className="text-white font-bold text-sm">
                   {result.strategy}{result.focusVariant ? ` — ${result.focusVariant}` : ''}
                 </p>
-                <p className="text-zinc-400 text-xs mt-0.5">{meta.blurb}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{meta.blurb}</p>
               </div>
             </div>
 
             <div>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Why this strategy</p>
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Why this strategy</p>
               <ul className="space-y-1.5">
                 {result.drivers.map((d, i) => (
-                  <li key={i} className="text-zinc-400 text-xs leading-relaxed flex gap-2">
-                    <span className="text-zinc-700 flex-shrink-0">▸</span>
+                  <li key={i} className="text-slate-400 text-xs leading-relaxed flex gap-2">
+                    <span className="text-slate-700 flex-shrink-0">▸</span>
                     <span>{d}</span>
                   </li>
                 ))}
@@ -492,20 +445,20 @@ export function MarketEntryView() {
             </div>
 
             <div>
-              <p className="text-zinc-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Strategy fit scores</p>
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold mb-2">Strategy fit scores</p>
               <StrategyScoreBars scores={result.scores} winner={result.strategy} />
             </div>
 
-            <div className="flex items-center justify-between text-xs text-zinc-600 pt-1 border-t border-zinc-900">
-              <span>Avg. force intensity: <span className="text-zinc-300 font-semibold">{result.avgIntensity}/10</span></span>
-              <span>Spread: <span className="text-zinc-300 font-semibold">{result.spread}/10</span></span>
+            <div className="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-900">
+              <span>Avg. force intensity: <span className="text-slate-300 font-semibold">{result.avgIntensity}/10</span></span>
+              <span>Spread: <span className="text-slate-300 font-semibold">{result.spread}/10</span></span>
             </div>
           </div>
         </Card>
 
         {/* Column 3 — Sliders + indicator panels */}
         <div className="space-y-4">
-          <Card>
+          <Card hoverable>
             <CardHeader title="Adjust Force Scores" subtitle="Drag to explore — the recommendation updates instantly from this blended score" />
             <div className="px-5 py-4 space-y-3">
               {FORCE_DEFS.map((def) => (
@@ -522,6 +475,7 @@ export function MarketEntryView() {
         onClose={() => setTierModalOpen(false)}
         title="Tier Indicators"
         subtitle="Indicator → Force mapping, grouped by Country / Sector / Industry tier"
+        width="lg"
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <IndicatorPanel

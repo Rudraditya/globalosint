@@ -8,30 +8,16 @@ import { ALL_COUNTRIES, fetchGDPForCountry, fetchForexRates, fetchMarketData, ge
 import { SkeletonChart, SkeletonCard } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { LiveStatus } from './LiveStatus'
+import { Card, CardHeader } from './Card'
+import { AnimatedNumber } from './AnimatedNumber'
 
 const DEFAULT_SELECTION = ['IND', 'USA', 'CHN', 'DEU', 'GBR', 'JPN']
 
 const TT = {
-  contentStyle: { background: '#0a0a0a', border: '1px solid #27272a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
+  contentStyle: { background: '#0a0e16', border: '1px solid rgba(148,163,184,0.15)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.8)', padding: '10px 14px' },
   labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
   itemStyle: { color: '#71717a', fontSize: 12 },
-  cursor: { stroke: 'rgba(249,115,22,0.15)', strokeWidth: 1, fill: 'rgba(249,115,22,0.04)' },
-}
-
-function Card({ children, className = '' }) {
-  return <div className={`bg-zinc-950 rounded-xl border border-zinc-900 ${className}`}>{children}</div>
-}
-
-function CardHeader({ title, subtitle, right }) {
-  return (
-    <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
-      <div>
-        <h2 className="text-white font-semibold text-sm">{title}</h2>
-        {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
-  )
+  cursor: { stroke: 'rgba(90,140,255,0.2)', strokeWidth: 1, fill: 'rgba(90,140,255,0.05)' },
 }
 
 // ── Country selector ───────────────────────────────────────────────────────
@@ -53,17 +39,17 @@ function CountrySelector({ selected, onChange }) {
     <div className="relative">
       <button
         onClick={() => setOpen((p) => !p)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:border-zinc-700 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs text-slate-300 hover:border-brand-500/40 transition-colors"
       >
         <span>{selected.length} countries</span>
         {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-30 w-72 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/80 p-3 max-h-80 overflow-y-auto">
+        <div className="absolute right-0 top-9 z-30 w-72 glass-card rounded-xl shadow-2xl shadow-black/80 p-3 max-h-80 overflow-y-auto">
           {regions.map((region) => (
             <div key={region} className="mb-3">
-              <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-semibold mb-1.5 px-1">{region}</p>
+              <p className="text-slate-600 text-[10px] uppercase tracking-widest font-semibold mb-1.5 px-1">{region}</p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_COUNTRIES.filter((c) => c.region === region).map((c) => {
                   const active = selected.includes(c.code)
@@ -72,7 +58,7 @@ function CountrySelector({ selected, onChange }) {
                       key={c.code}
                       onClick={() => toggle(c.code)}
                       className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all ${
-                        active ? 'text-white' : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                        active ? 'text-white' : 'bg-white/[0.03] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06]'
                       }`}
                       style={active ? { background: `${c.color}22`, border: `1px solid ${c.color}60`, color: c.color } : {}}
                     >
@@ -103,7 +89,7 @@ function GDPTooltip({ active, payload, label, selectedDefs }) {
         return (
           <div key={entry.dataKey} className="flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: entry.stroke }} />
-            <span className="text-zinc-400 text-xs">{c?.label ?? entry.dataKey}</span>
+            <span className="text-slate-400 text-xs">{c?.label ?? entry.dataKey}</span>
             <span className="ml-auto text-white text-xs font-bold tabular-nums pl-4">
               ${Number(entry.value).toLocaleString()} B
             </span>
@@ -119,21 +105,21 @@ function GDPTooltip({ active, payload, label, selectedDefs }) {
 function ForexCard({ fx }) {
   const up = fx.change > 0, flat = fx.change === 0 || fx.change == null
   return (
-    <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 hover:border-zinc-700 transition-colors">
-      <p className="text-zinc-500 text-xs font-semibold tracking-wider mb-1">{fx.label}</p>
+    <div className="glass-card glass-hover rounded-xl p-4">
+      <p className="text-slate-500 text-xs font-semibold tracking-wider mb-1">{fx.label}</p>
       <p className="text-xl font-bold text-white tabular-nums">
-        {fx.rate != null ? fx.rate.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '—'}
+        {fx.rate != null ? <AnimatedNumber value={fx.rate} format={(v) => v.toLocaleString(undefined, { maximumFractionDigits: 4 })} /> : '—'}
       </p>
       {fx.change != null && (
         <div className="flex items-center gap-1 mt-1">
-          {flat ? <Minus size={11} className="text-zinc-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
-          <span className={`text-xs font-semibold ${flat ? 'text-zinc-500' : up ? 'text-green-400' : 'text-red-400'}`}>
+          {flat ? <Minus size={11} className="text-slate-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
+          <span className={`text-xs font-semibold ${flat ? 'text-slate-500' : up ? 'text-green-400' : 'text-red-400'}`}>
             {fx.change > 0 ? '+' : ''}{fx.change}%
           </span>
-          <span className="text-zinc-700 text-xs ml-0.5">1d</span>
+          <span className="text-slate-700 text-xs ml-0.5">1d</span>
         </div>
       )}
-      {fx.error && <p className="text-zinc-700 text-xs mt-1">Unavailable</p>}
+      {fx.error && <p className="text-slate-700 text-xs mt-1">Unavailable</p>}
     </div>
   )
 }
@@ -142,28 +128,28 @@ function ForexCard({ fx }) {
 
 function TickerCard({ ticker }) {
   const up = ticker.change1M > 0, flat = ticker.change1M === 0
-  const trendColor = flat ? 'text-zinc-400' : up ? 'text-green-400' : 'text-red-400'
+  const trendColor = flat ? 'text-slate-400' : up ? 'text-green-400' : 'text-red-400'
   const lineColor = up ? '#22c55e' : '#ef4444'
   if (ticker.error) {
     return (
-      <div className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 border-dashed">
-        <p className="text-zinc-600 text-xs uppercase tracking-wider font-medium">{ticker.label}</p>
-        <p className="text-zinc-700 text-xs mt-1">Unavailable</p>
+      <div className="glass-card rounded-xl p-4 border-dashed">
+        <p className="text-slate-600 text-xs uppercase tracking-wider font-medium">{ticker.label}</p>
+        <p className="text-slate-700 text-xs mt-1">Unavailable</p>
       </div>
     )
   }
   return (
-    <div className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 hover:border-zinc-800 transition-colors">
-      <p className="text-zinc-500 text-xs uppercase tracking-wider font-medium mb-1">{ticker.label}</p>
+    <div className="glass-card glass-hover rounded-xl p-4">
+      <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-1">{ticker.label}</p>
       <p className="text-xl font-bold text-white tabular-nums">
-        {ticker.latest != null ? `$${ticker.latest.toLocaleString()}` : '—'}
+        {ticker.latest != null ? <AnimatedNumber value={ticker.latest} format={(v) => `$${v.toLocaleString()}`} /> : '—'}
       </p>
       <div className="flex items-center gap-1 mt-1">
-        {flat ? <Minus size={11} className="text-zinc-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
+        {flat ? <Minus size={11} className="text-slate-500" /> : up ? <TrendingUp size={11} className="text-green-400" /> : <TrendingDown size={11} className="text-red-400" />}
         <span className={`text-xs font-semibold ${trendColor}`}>
           {ticker.change1M != null ? `${ticker.change1M > 0 ? '+' : ''}${ticker.change1M}%` : '—'}
         </span>
-        <span className="text-zinc-700 text-xs ml-0.5">1M</span>
+        <span className="text-slate-700 text-xs ml-0.5">1M</span>
       </div>
       {ticker.series?.length > 0 && (
         <div className="mt-3 -mx-1">
@@ -175,7 +161,7 @@ function TickerCard({ ticker }) {
                   <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <Area type="monotone" dataKey="close" stroke={lineColor} fill={`url(#spark-${ticker.symbol})`} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="close" stroke={lineColor} fill={`url(#spark-${ticker.symbol})`} strokeWidth={1.5} dot={false} animationDuration={900} animationEasing="ease-out" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -295,7 +281,7 @@ export function MacroIndicatorsView() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-white font-semibold text-sm">GDP Comparison</h2>
-          <p className="text-zinc-600 text-xs mt-0.5">
+          <p className="text-slate-600 text-xs mt-0.5">
             All values in USD billions · {sourceList || 'Eurostat / World Bank'}
           </p>
         </div>
@@ -317,7 +303,7 @@ export function MacroIndicatorsView() {
       </div>
 
       {/* GDP time series area chart */}
-      <Card>
+      <Card hoverable>
         <CardHeader title="GDP Trend (USD Billions)" subtitle="10-year time series · Eurostat for EU members · World Bank for others" />
         <div className="px-5 py-4">
           {anyGdpLoading && gdpRows.length === 0 ? (
@@ -353,7 +339,7 @@ export function MacroIndicatorsView() {
 
       {/* Latest GDP bar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card hoverable>
           <CardHeader title="Latest GDP — Country Comparison" subtitle={latestBarData[0]?.year ? `USD billions · ${latestBarData[0].year}` : 'USD billions'} />
           <div className="px-5 py-4">
             {anyGdpLoading && gdpRows.length === 0 ? (
@@ -377,7 +363,7 @@ export function MacroIndicatorsView() {
                   <Tooltip
                     contentStyle={TT.contentStyle} labelStyle={TT.labelStyle}
                     formatter={(v, name, props) => [`$${Number(v).toLocaleString()} B`, props.payload?.label ?? name]}
-                    cursor={{ fill: 'rgba(249,115,22,0.06)' }}
+                    cursor={{ fill: 'rgba(90,140,255,0.08)' }}
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={52}>
                     {latestBarData.map(({ code, color }) => (
@@ -391,7 +377,7 @@ export function MacroIndicatorsView() {
         </Card>
 
         {/* FOREX panel */}
-        <Card>
+        <Card hoverable>
           <CardHeader
             title="Currency Exchange Rates"
             subtitle="vs USD · Yahoo Finance · 24h refresh"
@@ -416,7 +402,7 @@ export function MacroIndicatorsView() {
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-baseline gap-3">
             <h2 className="text-white font-semibold text-sm">Financial Market Snapshot</h2>
-            <p className="text-zinc-600 text-xs">1-month performance · Yahoo Finance</p>
+            <p className="text-slate-600 text-xs">1-month performance · Yahoo Finance</p>
           </div>
           <LiveStatus online={market.length > 0} lastUpdated={marketUpdated} />
         </div>

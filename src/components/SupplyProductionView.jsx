@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell,
@@ -9,6 +9,9 @@ import { SkeletonChart, SkeletonCard } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { WorldMap } from './WorldMap'
 import { LiveStatus } from './LiveStatus'
+import { Card, CardHeader } from './Card'
+import { AnimatedNumber } from './AnimatedNumber'
+import { staggerIn } from '../utils/animations'
 
 // G20 countries with OECD KEI industrial production data
 const COUNTRIES = [
@@ -22,15 +25,15 @@ const COUNTRIES = [
 
 const TOOLTIP_STYLE = {
   contentStyle: {
-    background: '#0a0a0a',
-    border: '1px solid #27272a',
+    background: '#0a0e16',
+    border: '1px solid rgba(148,163,184,0.15)',
     borderRadius: 10,
     boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
     padding: '10px 14px',
   },
   labelStyle: { color: '#d4d4d8', fontWeight: 600, marginBottom: 4, fontSize: 12 },
   itemStyle: { color: '#71717a', fontSize: 12 },
-  cursor: { fill: 'rgba(249,115,22,0.06)' },
+  cursor: { fill: 'rgba(90,140,255,0.08)' },
 }
 
 // ── Stat card ──────────────────────────────────────────────────────────────
@@ -39,19 +42,19 @@ function StatCard({ label, value, sub, trend, color, loading }) {
   const isFlat = trend === 0
   const Icon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown
   const trendColor = trend == null
-    ? 'text-zinc-600'
-    : isUp ? 'text-green-400' : isFlat ? 'text-zinc-500' : 'text-red-400'
+    ? 'text-slate-600'
+    : isUp ? 'text-green-400' : isFlat ? 'text-slate-500' : 'text-red-400'
 
   if (loading) return <SkeletonCard />
 
   return (
     <div
-      className="bg-zinc-950 rounded-xl p-4 border border-zinc-900 hover:border-zinc-800 transition-colors"
+      className="glass-card glass-hover rounded-xl p-4"
       style={{ borderTopColor: color, borderTopWidth: 2 }}
     >
-      <p className="text-zinc-500 text-xs uppercase tracking-wider font-medium mb-2">{label}</p>
+      <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">{label}</p>
       <p className="text-2xl font-bold text-white tabular-nums mb-1.5">
-        {value ?? <span className="text-zinc-700">—</span>}
+        {trend != null ? <AnimatedNumber value={trend} format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} /> : <span className="text-slate-700">—</span>}
       </p>
       <div className="flex items-center gap-1.5">
         {trend != null && <Icon size={12} className={trendColor} />}
@@ -111,16 +114,10 @@ function IndexTooltip({ active, payload, label }) {
 // ── Section card wrapper ───────────────────────────────────────────────────
 function SectionCard({ title, subtitle, lastUpdated, online, children }) {
   return (
-    <div className="bg-zinc-950 rounded-xl border border-zinc-900">
-      <div className="flex items-start justify-between px-5 pt-4 pb-3 border-b border-zinc-900">
-        <div>
-          <h2 className="text-white font-semibold text-sm">{title}</h2>
-          {subtitle && <p className="text-zinc-600 text-xs mt-0.5">{subtitle}</p>}
-        </div>
-        <LiveStatus online={online} lastUpdated={lastUpdated} />
-      </div>
+    <Card hoverable>
+      <CardHeader title={title} subtitle={subtitle} right={<LiveStatus online={online} lastUpdated={lastUpdated} />} />
       <div className="px-5 py-4">{children}</div>
-    </div>
+    </Card>
   )
 }
 
@@ -129,6 +126,7 @@ export function SupplyProductionView() {
   const [loading, setLoading] = useState({})
   const [errors, setErrors] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
+  const statGridRef = useRef(null)
 
   const load = useCallback(async (code) => {
     setLoading((p) => ({ ...p, [code]: true }))
@@ -176,10 +174,14 @@ export function SupplyProductionView() {
   const reloadAll = () => COUNTRIES.forEach(({ code }) => load(code))
   const isOnline = !anyLoading && Object.keys(data).length > 0
 
+  useEffect(() => {
+    if (statGridRef.current && !anyLoading) staggerIn(statGridRef.current.children)
+  }, [anyLoading])
+
   return (
     <div className="space-y-4">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div ref={statGridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {COUNTRIES.map(({ code, label, color }) => {
           const growth = data[code]?.growth ?? []
           const latest = growth[growth.length - 1]

@@ -4,3 +4,5 @@ dist/
 screenshot*.mjs
 screenshot_full.mjs
 pm2-api.mjs
+
+.claude/settings.local.json
