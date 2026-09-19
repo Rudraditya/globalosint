@@ -2,6 +2,8 @@
 
 An interactive geopolitical intelligence dashboard that visualises global industrial production, macroeconomic indicators, India-focused economic data, and real-time commodity pricing — built with React, Recharts, and Vite.
 
+**Live demo: [globalosint.vercel.app](https://globalosint.vercel.app)**
+
 
 ![India Focus dashboard](docs/india-focus.png)
 
